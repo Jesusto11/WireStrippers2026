@@ -33,6 +33,75 @@ def agregar_duracion_muestras(df: pd.DataFrame, fecha_fin: datetime | str) -> pd
     return result
 
 
+def _maximo_intervalo_no_disponible(
+    timed_frame: pd.DataFrame,
+    column: str,
+    threshold: float,
+) -> tuple[float, str, str]:
+    """Estima el tramo continuo más largo con una magnitud <= threshold.
+
+    La muestra se considera representativa hasta la siguiente marca temporal.
+    Saltos de datos superiores a 1.5 veces el paso mediano se tratan como
+    intervalos desconocidos, no como pérdida demostrada.
+    """
+    if timed_frame.empty or column not in timed_frame.columns:
+        return 0.0, "n/a", "n/a"
+
+    frame = timed_frame.sort_values("datetime").reset_index(drop=True).copy()
+    timestamps = pd.to_datetime(frame["datetime"])
+    gaps_h = timestamps.diff().dt.total_seconds().dropna() / 3600.0
+    positive_gaps = gaps_h[gaps_h > 0]
+    median_step_h = float(positive_gaps.median()) if not positive_gaps.empty else None
+
+    best_duration = 0.0
+    best_start = None
+    best_end = None
+    run_duration = 0.0
+    run_start = None
+    run_end = None
+
+    for _, row in frame.iterrows():
+        sample_time = pd.Timestamp(row["datetime"])
+        duration_raw = row.get("duration_h", 0.0)
+        duration_h = float(duration_raw) if pd.notna(duration_raw) else 0.0
+        value = row.get(column, np.nan)
+        if pd.isna(value) or not np.isfinite(duration_h) or duration_h <= 0:
+            if run_duration > best_duration:
+                best_duration, best_start, best_end = run_duration, run_start, run_end
+            run_duration, run_start, run_end = 0.0, None, None
+            continue
+
+        # Si falta una muestra intermedia, no afirmar que todo el intervalo
+        # permaneció en estado de pérdida.
+        if median_step_h and duration_h > median_step_h * 1.5:
+            if run_duration > best_duration:
+                best_duration, best_start, best_end = run_duration, run_start, run_end
+            run_duration, run_start, run_end = 0.0, None, None
+            continue
+
+        unavailable = float(value) <= float(threshold)
+        if unavailable:
+            if run_start is None:
+                run_start = sample_time
+            run_duration += duration_h
+            run_end = sample_time + pd.to_timedelta(duration_h, unit="h")
+        else:
+            if run_duration > best_duration:
+                best_duration, best_start, best_end = run_duration, run_start, run_end
+            run_duration, run_start, run_end = 0.0, None, None
+
+    if run_duration > best_duration:
+        best_duration, best_start, best_end = run_duration, run_start, run_end
+
+    if best_start is None or best_end is None:
+        return 0.0, "n/a", "n/a"
+    return (
+        float(best_duration),
+        best_start.strftime("%Y-%m-%d %H:%M UT"),
+        best_end.strftime("%Y-%m-%d %H:%M UT"),
+    )
+
+
 def calcular_metricas_sitio(
     resultado: dict[str, Any],
     fecha_inicio: datetime | str,
@@ -58,6 +127,12 @@ def calcular_metricas_sitio(
     earth_margin_h = duration(earth_elev >= margen_tierra_deg)
     sun_band_h = duration(sun_elev.between(*banda_solar_deg, inclusive="both"))
     sun_high_h = duration(sun_elev > umbral_exposicion_solar_deg)
+    longest_dark_h, dark_start, dark_end = _maximo_intervalo_no_disponible(
+        df, "sun_elevation_deg", 0.0
+    )
+    longest_earth_gap_h, earth_gap_start, earth_gap_end = _maximo_intervalo_no_disponible(
+        df, "earth_elevation_deg", float(margen_tierra_deg)
+    )
 
     def pct(hours: float) -> float:
         return 100.0 * hours / total_hours if total_hours else np.nan
@@ -73,6 +148,10 @@ def calcular_metricas_sitio(
         f"Earth ≥ {margen_tierra_deg:g}° (%)": pct(earth_margin_h),
         f"Sun {banda_solar_deg[0]:g}–{banda_solar_deg[1]:g}° (h)": sun_band_h,
         f"Sun > {umbral_exposicion_solar_deg:g}° (h)": sun_high_h,
+        "Longest solar darkness (h)": longest_dark_h,
+        "Longest solar darkness interval (UT)": (f"{dark_start} → {dark_end}" if dark_start != "n/a" else "n/a"),
+        "Longest Earth below margin (h)": longest_earth_gap_h,
+        "Longest Earth gap interval (UT)": (f"{earth_gap_start} → {earth_gap_end}" if earth_gap_start != "n/a" else "n/a"),
     }
     return summary, df
 

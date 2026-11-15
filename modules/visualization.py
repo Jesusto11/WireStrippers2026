@@ -178,7 +178,7 @@ def crear_timeline_plotly(
         vertical_spacing=0.10,
         subplot_titles=("SOL · Elevación aparente", "TIERRA · Elevación aparente"),
     )
-    palette = ["#62D7C8", "#FF9D72", "#91A8FF", "#E6C86E", "#C49BEB"]
+    palette = ["#53D5E8", "#FF8D83", "#F4BD62", "#91A8FF", "#79D9B5"]
     for index, (site, frame) in enumerate(frames_by_site.items()):
         color = palette[index % len(palette)]
         if "sun_elevation_deg" in frame.columns:
@@ -239,7 +239,7 @@ def crear_timeline_plotly(
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Arial, sans-serif", color="#DCE7F1"),
+        font=dict(family="Manrope, sans-serif", color="#DCE7F1"),
         legend_title_text="Site / object",
         margin=dict(l=15, r=15, t=65, b=35),
     )
@@ -255,7 +255,7 @@ def crear_grafica_comparacion(df_summary: pd.DataFrame) -> go.Figure:
         x=df_summary["Site"],
         y=df_summary["Sun visible (%)"],
         name="Sun above horizon (%)",
-        marker_color="#E7B85C",
+        marker_color="#F4BD62",
     ))
     earth_percent_col = next(
         (column for column in df_summary.columns if column.startswith("Earth ≥") and column.endswith("(%)")),
@@ -266,7 +266,7 @@ def crear_grafica_comparacion(df_summary: pd.DataFrame) -> go.Figure:
             x=df_summary["Site"],
             y=df_summary[earth_percent_col],
             name=earth_percent_col,
-            marker_color="#59A9D1",
+            marker_color="#53D5E8",
         ))
     fig.update_layout(
         template="plotly_dark",
@@ -299,4 +299,90 @@ def crear_superficie_3d(elevation: np.ndarray, title: str = "Modelo de elevació
         margin=dict(l=0, r=0, t=50, b=0),
         height=560,
     )
+    return fig
+
+
+
+def crear_grafica_pareto_topografica(candidates: pd.DataFrame) -> go.Figure:
+    """Grafica la frontera Pareto actual basada solo en atributos topográficos.
+
+    Eje X: pendiente (minimizar). Eje Y: rugosidad (minimizar).
+    Tamaño del marcador: área aproximada del parche (maximizar).
+    El color distingue candidatos no dominados del resto.
+    """
+    fig = go.Figure()
+    if candidates is None or candidates.empty:
+        fig.update_layout(
+            template="plotly_dark",
+            title="Topographic Pareto screening",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+        )
+        return fig
+
+    frame = candidates.copy()
+    for column in ("slope_deg", "roughness_m", "area_km2_approx", "lat", "lon"):
+        if column in frame:
+            frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    if "Pareto" not in frame:
+        frame["Pareto"] = False
+    frame["Pareto"] = frame["Pareto"].fillna(False).astype(bool)
+
+    area = frame.get("area_km2_approx", pd.Series(0.0, index=frame.index)).fillna(0).clip(lower=0)
+    max_area = float(area.max()) if len(area) else 0.0
+    marker_sizes = 10 + (18 * np.sqrt(area / max_area)) if max_area > 0 else pd.Series(12, index=frame.index)
+    custom = np.empty((len(frame), 4), dtype=object)
+    custom[:, 0] = frame.get("candidate_id", pd.Series(np.arange(1, len(frame) + 1), index=frame.index)).astype(str).to_numpy()
+    custom[:, 1] = frame.get("lat", pd.Series(np.nan, index=frame.index)).to_numpy()
+    custom[:, 2] = frame.get("lon", pd.Series(np.nan, index=frame.index)).to_numpy()
+    custom[:, 3] = area.to_numpy(dtype=float)
+
+    for is_pareto, label, color in [
+        (False, "Dominated candidate", "#FF8D83"),
+        (True, "Non-dominated / Pareto", "#53D5E8"),
+    ]:
+        subset = frame[frame["Pareto"] == is_pareto]
+        if subset.empty:
+            continue
+        subset_indices = subset.index
+        sizes = marker_sizes.loc[subset_indices] if hasattr(marker_sizes, "loc") else marker_sizes
+        subset_custom = custom[[frame.index.get_loc(i) for i in subset_indices]]
+        fig.add_trace(go.Scatter(
+            x=subset["slope_deg"],
+            y=subset["roughness_m"],
+            mode="markers",
+            name=label,
+            customdata=subset_custom,
+            marker=dict(
+                size=sizes,
+                color=color,
+                opacity=0.88,
+                line=dict(color="#E8F4FA", width=1),
+            ),
+            hovertemplate=(
+                "Candidate %{customdata[0]}<br>"
+                "Slope: %{x:.2f}°<br>"
+                "Roughness: %{y:.2f} m<br>"
+                "Latitude: %{customdata[1]:.5f}°<br>"
+                "Longitude: %{customdata[2]:.5f}°<br>"
+                "Patch area: %{customdata[3]:.5f} km²"
+                "<extra></extra>"
+            ),
+        ))
+
+    fig.update_layout(
+        template="plotly_dark",
+        title="Topographic trade-off / Pareto frontier",
+        xaxis_title="Local slope (°) · lower is better",
+        yaxis_title="Local roughness (m) · lower is better",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(5,18,32,.45)",
+        font=dict(family="Manrope, sans-serif", color="#DCE7F1"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        margin=dict(l=18, r=15, t=65, b=45),
+        height=430,
+        hovermode="closest",
+    )
+    fig.update_xaxes(gridcolor="rgba(130,170,195,.14)")
+    fig.update_yaxes(gridcolor="rgba(130,170,195,.14)")
     return fig
