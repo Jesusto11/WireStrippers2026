@@ -332,7 +332,7 @@ interval_options = {
 # -----------------------------------------------------------------------------
 st.sidebar.markdown("<div class='section-kicker'>CONFIGURACIÓN DE MISIÓN</div>", unsafe_allow_html=True)
 st.sidebar.markdown("## Parámetros de misión")
-with st.sidebar.form("mission_setup_form"):
+with st.sidebar:
     selected_missions = st.multiselect(
         "Sitios de referencia Apollo",
         options=mission_options,
@@ -379,7 +379,8 @@ with st.sidebar.form("mission_setup_form"):
                              help="Margen angular exploratorio; no certifica un enlace de radiofrecuencia.")
     min_sun_percent = st.slider("Disponibilidad solar mínima para el cribado (%)", 0, 100, 50, 5)
     min_earth_percent = st.slider("Disponibilidad terrestre mínima para el cribado (%)", 0, 100, 50, 5)
-    run_button = st.form_submit_button("EJECUTAR ANÁLISIS DE MISIÓN", type="primary", width="stretch")
+    st.caption("Los campos condicionales aparecen al cambiar las opciones. Para recalcular los resultados, ejecuta el análisis.")
+    run_button = st.button("EJECUTAR ANÁLISIS DE MISIÓN", type="primary", width="stretch")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("<div class='section-kicker'>DATOS TOPOGRÁFICOS</div>", unsafe_allow_html=True)
@@ -407,6 +408,23 @@ if window_mode == "Llegada + estancia en superficie":
 else:
     end_ut = datetime.combine(end_date, end_time)
 step_size, interval_minutes = interval_options[interval_label]
+
+# Identifica la configuración visible para avisar si los resultados corresponden
+# a una ejecución anterior después de cambiar controles de la barra lateral.
+current_config_signature = (
+    tuple(selected_missions),
+    bool(add_custom),
+    custom_name.strip() if add_custom else None,
+    float(custom_lat) if add_custom else None,
+    float(custom_lon) if add_custom else None,
+    start_ut.isoformat(),
+    end_ut.isoformat(),
+    window_mode,
+    interval_label,
+    int(margin_earth),
+    int(min_sun_percent),
+    int(min_earth_percent),
+)
 
 if run_button:
     st.session_state.pop("analysis_results", None)
@@ -462,6 +480,7 @@ if run_button:
                     st.session_state["analysis_earth_margin"] = margin_earth
                     st.session_state["analysis_min_sun_percent"] = min_sun_percent
                     st.session_state["analysis_min_earth_percent"] = min_earth_percent
+                    st.session_state["analysis_config_signature"] = current_config_signature
                     st.session_state["analysis_failures"] = failures
                     st.session_state.pop("terrain_output", None)
                     st.session_state.pop("terrain_api_output", None)
@@ -493,6 +512,11 @@ if "analysis_results" not in st.session_state:
 results = st.session_state["analysis_results"]
 summary = st.session_state["analysis_summary"]
 frames_by_site = st.session_state["analysis_frames"]
+if st.session_state.get("analysis_config_signature") != current_config_signature:
+    st.info(
+        "La configuración de la misión cambió. Los resultados mostrados pertenecen "
+        "a la última ejecución; presiona **EJECUTAR ANÁLISIS DE MISIÓN** para actualizarlos."
+    )
 waypoint_bank = st.session_state.get("analysis_waypoints", {})
 analysis_start = st.session_state["analysis_start"]
 analysis_end = st.session_state["analysis_end"]
