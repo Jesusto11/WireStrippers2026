@@ -23,6 +23,7 @@ from modules.terrain import leer_dem_local
 from modules.visualization import (
     cargar_waypoints_apollo,
     crear_grafica_comparacion,
+    crear_grafica_pareto_topografica,
     crear_superficie_3d,
     crear_timeline_plotly,
     construir_mapa_lunar,
@@ -46,37 +47,110 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+      :root {
+        --space: #071426;
+        --panel: #0D2038;
+        --panel-2: #122B49;
+        --panel-edge: rgba(93, 190, 220, .30);
+        --cyan: #53D5E8;
+        --blue: #267CB8;
+        --amber: #F4BD62;
+        --coral: #FF8D83;
+        --text: #F2F7FC;
+        --muted: #A9BED2;
+      }
       html, body, [class*="css"] { font-family: 'Manrope', sans-serif; }
-      .stApp { background:
-        radial-gradient(ellipse at 10% 0%, rgba(70,145,160,.14), transparent 32%),
-        radial-gradient(ellipse at 90% 5%, rgba(100,105,175,.10), transparent 28%),
-        #07111F; }
-      [data-testid="stSidebar"] { background: #0B1727; border-right: 1px solid rgba(142,177,205,.13); }
-      [data-testid="stMetric"] { background: linear-gradient(145deg, rgba(23,42,61,.9), rgba(14,29,45,.9));
-        border: 1px solid rgba(128,177,194,.16); padding: 15px 17px; border-radius: 15px; }
-      [data-testid="stMetricLabel"] { color: #9DB3C6; }
-      [data-testid="stMetricValue"] { color: #EAF5F6; }
-      .hero { padding: 26px 30px; border: 1px solid rgba(105,207,194,.24); border-radius: 20px;
-        background: linear-gradient(115deg, rgba(20,48,65,.96), rgba(14,28,47,.92));
-        box-shadow: 0 18px 55px rgba(0,0,0,.16); margin-bottom: 20px; }
-      .hero-kicker { color: #70D7C8; font: 500 11px 'DM Mono', monospace; letter-spacing: .22em; }
-      .hero-title { color: #F1F7FA; font-size: clamp(26px, 3vw, 40px); font-weight: 800; letter-spacing: -.04em; margin: 5px 0 2px; }
-      .hero-sub { color: #AFC3D1; font-size: 14px; max-width: 850px; line-height: 1.6; }
-      .section-kicker { color: #71D7C8; font: 500 10px 'DM Mono', monospace; letter-spacing: .16em;
-        margin-bottom: 3px; }
-      .panel { background: rgba(16,31,48,.78); border: 1px solid rgba(128,177,194,.15);
-        padding: 17px 19px; border-radius: 16px; }
-      .soft-note { color: #9DB3C6; font-size: 12px; line-height: 1.55; }
-      .tag { display: inline-block; padding: 4px 9px; border: 1px solid rgba(105,207,194,.25);
-        color: #83E3D5; background: rgba(105,207,194,.08); border-radius: 99px;
-        font: 500 10px 'DM Mono', monospace; letter-spacing: .08em; }
-      div.stButton > button[kind="primary"] { background: linear-gradient(100deg,#45BBAE,#3C8FAD);
-        color: #06121D; border: 0; font-weight: 800; border-radius: 11px; min-height: 42px; }
-      div.stButton > button { border-radius: 10px; }
-      div[data-testid="stTabs"] button { font-weight: 700; }
+      .stApp {
+        background:
+          radial-gradient(ellipse at 50% -10%, rgba(53,154,201,.22), transparent 40%),
+          radial-gradient(ellipse at 2% 30%, rgba(220,104,145,.09), transparent 26%),
+          radial-gradient(ellipse at 96% 5%, rgba(244,189,98,.08), transparent 24%),
+          linear-gradient(180deg, #071426 0%, #08182B 48%, #06111F 100%);
+        color: var(--text);
+      }
+      [data-testid="stHeader"] { background: rgba(5, 16, 30, .82); }
+      [data-testid="stAppViewContainer"] > .main { background: transparent; }
+      [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0B1D34 0%, #081629 100%);
+        border-right: 1px solid rgba(83,213,232,.22);
+        box-shadow: 10px 0 35px rgba(0,0,0,.18);
+      }
+      [data-testid="stSidebar"] > div:first-child { padding-top: 1.2rem; }
+      [data-testid="stMetric"] {
+        background: linear-gradient(145deg, rgba(19,47,75,.96), rgba(10,29,50,.96));
+        border: 1px solid rgba(83,213,232,.23);
+        border-top: 2px solid rgba(83,213,232,.62);
+        padding: 14px 16px;
+        border-radius: 12px;
+        box-shadow: inset 0 1px rgba(255,255,255,.035), 0 9px 25px rgba(0,0,0,.13);
+      }
+      [data-testid="stMetricLabel"] { color: #9FBBD0; font: 500 10px 'DM Mono', monospace; letter-spacing: .10em; text-transform: uppercase; }
+      [data-testid="stMetricValue"] { color: #F2F8FC; font-family: 'Barlow Condensed', sans-serif; font-size: 30px; letter-spacing: .02em; }
+      [data-testid="stMetricDelta"] { font-family: 'DM Mono', monospace; }
+      .hero {
+        position: relative; overflow: hidden;
+        padding: 25px 29px 22px;
+        border: 1px solid rgba(83,213,232,.38);
+        border-top: 3px solid #348DBB;
+        border-radius: 17px;
+        background:
+          linear-gradient(110deg, rgba(10,29,52,.98) 0%, rgba(17,51,79,.96) 55%, rgba(18,39,69,.96) 100%);
+        box-shadow: 0 18px 55px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.08);
+        margin-bottom: 18px;
+      }
+      .hero:before {
+        content: ''; position: absolute; inset: 0 0 auto 0; height: 5px;
+        background: repeating-linear-gradient(90deg, #3DB7D2 0 46px, transparent 46px 54px, #F4BD62 54px 61px, transparent 61px 78px);
+        opacity: .8;
+      }
+      .hero:after {
+        content: ''; position: absolute; right: -35px; top: -75px; width: 360px; height: 260px;
+        border: 1px solid rgba(83,213,232,.14); border-radius: 50%;
+        box-shadow: 0 0 0 18px rgba(83,213,232,.025), 0 0 0 38px rgba(83,213,232,.02), 0 0 55px rgba(83,213,232,.08);
+        pointer-events: none;
+      }
+      .cockpit-status { display:flex; flex-wrap:wrap; gap:17px; align-items:center; margin-bottom:13px; color:#9BB8CC; font:500 10px 'DM Mono',monospace; letter-spacing:.13em; }
+      .status-led { display:inline-block; width:7px; height:7px; margin-right:7px; border-radius:50%; background:#63E0B3; box-shadow:0 0 9px rgba(99,224,179,.85); }
+      .status-led.amber { background:var(--amber); box-shadow:0 0 9px rgba(244,189,98,.75); }
+      .hero-grid { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:end; gap:22px; position:relative; z-index:1; }
+      .hero-kicker { color: #69D7E7; font: 500 10px 'DM Mono', monospace; letter-spacing: .24em; }
+      .hero-title { color: #F5F9FC; font: 800 clamp(30px, 3.8vw, 47px) 'Barlow Condensed', sans-serif; letter-spacing: .045em; margin: 4px 0 2px; text-shadow: 0 3px 18px rgba(83,213,232,.12); }
+      .hero-sub { color: #B7C9D9; font-size: 13px; max-width: 820px; line-height: 1.65; }
+      .cockpit-readouts { display:flex; gap:9px; align-items:stretch; }
+      .readout { min-width:100px; padding:10px 12px; border:1px solid rgba(83,213,232,.24); border-radius:9px; background:rgba(4,17,32,.47); box-shadow:inset 0 0 18px rgba(83,213,232,.035); }
+      .readout-label { color:#82A9C3; font:500 9px 'DM Mono',monospace; letter-spacing:.12em; }
+      .readout-value { color:#F4BD62; font:700 18px 'Barlow Condensed',sans-serif; letter-spacing:.08em; margin-top:3px; }
+      .readout-small { color:#A7BECE; font:400 8px 'DM Mono',monospace; margin-top:2px; }
+      .section-kicker { color: #65D5E5; font: 500 10px 'DM Mono', monospace; letter-spacing: .18em; margin: 3px 0 5px; }
+      .panel {
+        background: linear-gradient(145deg, rgba(15,37,61,.90), rgba(9,26,46,.92));
+        border: 1px solid rgba(83,213,232,.22); border-left: 3px solid rgba(83,213,232,.58);
+        padding: 17px 19px; border-radius: 12px; box-shadow:inset 0 1px rgba(255,255,255,.035),0 10px 25px rgba(0,0,0,.12);
+      }
+      .soft-note { color: #A6BDCF; font-size: 11px; line-height: 1.6; }
+      .tag { display: inline-block; padding: 4px 9px; border: 1px solid rgba(83,213,232,.32); color: #83E5F0; background: rgba(43,159,192,.10); border-radius: 4px; font: 500 9px 'DM Mono', monospace; letter-spacing: .10em; }
       .mono { font-family: 'DM Mono', monospace; }
+      div.stButton > button[kind="primary"], div.stFormSubmitButton > button {
+        background: linear-gradient(100deg,#49C8DE 0%,#378FC6 100%); color:#071626;
+        border:1px solid rgba(160,238,247,.4); font-weight:800; letter-spacing:.08em;
+        border-radius:7px; min-height:42px; box-shadow:0 5px 15px rgba(39,145,188,.18);
+      }
+      div.stButton > button { border:1px solid rgba(83,213,232,.24); border-radius:7px; background:rgba(16,44,70,.76); color:#DDEAF4; }
+      div.stButton > button:hover, div.stFormSubmitButton > button:hover { border-color:#F4BD62; color:#FFF; }
+      div[data-testid="stTabs"] [role="tablist"] { gap:7px; border-bottom:1px solid rgba(83,213,232,.2); }
+      div[data-testid="stTabs"] button[role="tab"] { background:rgba(11,31,52,.72); border:1px solid rgba(83,213,232,.14); border-bottom:0; border-radius:8px 8px 0 0; color:#9DB7CB; padding:9px 15px; }
+      div[data-testid="stTabs"] button[aria-selected="true"] { background:linear-gradient(180deg,rgba(38,108,145,.34),rgba(12,36,59,.95)); color:#75E0EC; border-color:rgba(83,213,232,.42); box-shadow:inset 0 2px #53D5E8; }
+      [data-testid="stDataFrame"], [data-testid="stPlotlyChart"], [data-testid="stFoliumChart"] { border:1px solid rgba(83,213,232,.18); border-radius:10px; overflow:hidden; background:rgba(8,24,42,.42); }
+      [data-testid="stForm"] { border:1px solid rgba(83,213,232,.18); border-radius:11px; background:rgba(6,22,39,.35); padding:12px; }
+      [data-testid="stExpander"] { border:1px solid rgba(83,213,232,.18); border-radius:9px; background:rgba(10,29,49,.42); }
+      [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input, [data-testid="stDateInput"] input, [data-testid="stTimeInput"] input { background:#0B2036; color:#EAF5FC; border-color:rgba(83,213,232,.25); }
+      [data-testid="stSelectbox"] [data-baseweb="select"] > div, [data-testid="stMultiSelect"] [data-baseweb="select"] > div { background:#0B2036; border-color:rgba(83,213,232,.25); }
+      [data-testid="stSlider"] [data-testid="stThumbValue"] { color:#F4BD62; }
+      hr { border-color:rgba(83,213,232,.18); }
+      .instrument-caption { color:#7FA2BB; font:500 9px 'DM Mono',monospace; letter-spacing:.13em; text-transform:uppercase; }
       footer { visibility: hidden; }
+      @media (max-width: 850px) { .hero-grid { grid-template-columns:1fr; } .cockpit-readouts { display:none; } }
     </style>
     """,
     unsafe_allow_html=True,
@@ -214,10 +288,24 @@ def _write_upload_to_temp(uploaded_file) -> str:
 st.markdown(
     """
     <div class="hero">
-      <div class="hero-kicker">LUNAR LANDING SITE INTELLIGENCE / MISSION SUPPORT</div>
-      <div class="hero-title">LUNASCOUT <span style="color:#70D7C8">/</span> Lunar Operations</div>
-      <div class="hero-sub">Explore landing-site conditions, compare mission windows and inspect the apparent geometry of the Sun and Earth using NASA/JPL Horizons and lunar surface data.</div>
-      <div style="margin-top:15px"><span class="tag">NASA JPL HORIZONS</span>&nbsp; <span class="tag">MOON TREK / LRO</span>&nbsp; <span class="tag">TEMPORAL ANALYSIS</span></div>
+      <div class="cockpit-status">
+        <span><i class="status-led"></i>FLIGHT SYSTEMS READY</span>
+        <span><i class="status-led amber"></i>EPHEMERIS ON DEMAND</span>
+        <span>CONTROL DECK / LUNAR SURFACE OPERATIONS</span>
+      </div>
+      <div class="hero-grid">
+        <div>
+          <div class="hero-kicker">LUNAR LANDING SITE INTELLIGENCE / MISSION SUPPORT</div>
+          <div class="hero-title">LUNASCOUT <span style="color:#53D5E8">/</span> LUNAR OPERATIONS</div>
+          <div class="hero-sub">A cockpit-inspired mission console to compare lunar sites, inspect Sun–Earth geometry and screen local terrain using NASA/JPL data.</div>
+          <div style="margin-top:14px"><span class="tag">JPL HORIZONS</span>&nbsp; <span class="tag">LRO / MOON TREK</span>&nbsp; <span class="tag">MISSION TIMELINE</span>&nbsp; <span class="tag">TERRAIN LAB</span></div>
+        </div>
+        <div class="cockpit-readouts">
+          <div class="readout"><div class="readout-label">DATA BUS</div><div class="readout-value">NOMINAL</div><div class="readout-small">NASA / JPL</div></div>
+          <div class="readout"><div class="readout-label">SURFACE MODE</div><div class="readout-value" style="color:#65D5E5">ANALYSIS</div><div class="readout-small">LUNAR OPS</div></div>
+          <div class="readout"><div class="readout-label">SYSTEM</div><div class="readout-value" style="color:#7FE0B5">READY</div><div class="readout-small">STREAMLIT</div></div>
+        </div>
+      </div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -257,15 +345,33 @@ with st.sidebar.form("mission_setup_form"):
         custom_lon = st.number_input("Longitude (°)", min_value=-180.0, max_value=180.0, value=0.0, step=0.01, format="%.5f")
 
     st.markdown("---")
-    st.caption("TIME WINDOW / UT")
+    st.caption("MISSION WINDOW / UTC")
     today = date.today()
-    start_date = st.date_input("Start date", value=today)
-    start_time = st.time_input("Start time (UT)", value=time(0, 0))
-    end_date = st.date_input("End date", value=today + timedelta(days=1))
-    end_time = st.time_input("End time (UT)", value=time(0, 0))
-    interval_label = st.selectbox("Sampling interval", list(interval_options), index=3)
+    window_mode = st.radio(
+        "Define mission window",
+        ["Arrival + surface stay", "Custom start / end"],
+        horizontal=False,
+        help="Arrival mode computes the end of the analysis from the planned surface-stay duration.",
+    )
+    start_date = st.date_input("Landing / start date", value=today)
+    start_time = st.time_input("Landing / start time (UT)", value=time(0, 0))
+    if window_mode == "Arrival + surface stay":
+        stay_hours = st.number_input(
+            "Planned surface stay (hours)", min_value=1.0, max_value=720.0,
+            value=144.0, step=6.0,
+            help="For example, 144 hours corresponds to a six-day surface stay.",
+        )
+        st.caption(f"Calculated end: {(datetime.combine(start_date, start_time) + timedelta(hours=float(stay_hours))):%Y-%m-%d %H:%M} UT")
+        end_date = None
+        end_time = None
+    else:
+        st.caption("Set an explicit end timestamp for a custom analysis range.")
+        end_date = st.date_input("End date", value=today + timedelta(days=1))
+        end_time = st.time_input("End time (UT)", value=time(0, 0))
+        stay_hours = None
+    interval_label = st.selectbox("Ephemeris sampling interval", list(interval_options), index=3)
     margin_earth = st.slider("Earth elevation reference (°)", min_value=0, max_value=30, value=10,
-                             help="Umbral geométrico exploratorio. No certifica disponibilidad RF.")
+                             help="Exploratory angular margin. It does not certify an RF link.")
     min_sun_percent = st.slider("Minimum Sun-visible window for screening (%)", 0, 100, 50, 5)
     min_earth_percent = st.slider("Minimum Earth-margin window for screening (%)", 0, 100, 50, 5)
     run_button = st.form_submit_button("RUN MISSION ANALYSIS", type="primary", width="stretch")
@@ -286,7 +392,10 @@ st.sidebar.markdown("---")
 st.sidebar.caption("LUNASCOUT prototype · Results are exploratory decision-support outputs, not landing certification.")
 
 start_ut = datetime.combine(start_date, start_time)
-end_ut = datetime.combine(end_date, end_time)
+if window_mode == "Arrival + surface stay":
+    end_ut = start_ut + timedelta(hours=float(stay_hours))
+else:
+    end_ut = datetime.combine(end_date, end_time)
 step_size, interval_minutes = interval_options[interval_label]
 
 if run_button:
@@ -329,6 +438,8 @@ if run_button:
                     st.session_state["analysis_waypoints"] = waypoints
                     st.session_state["analysis_start"] = start_ut
                     st.session_state["analysis_end"] = end_ut
+                    st.session_state["analysis_window_mode"] = window_mode
+                    st.session_state["analysis_stay_hours"] = (end_ut - start_ut).total_seconds() / 3600.0
                     st.session_state["analysis_step"] = step_size
                     st.session_state["analysis_interval_minutes"] = interval_minutes
                     st.session_state["analysis_earth_margin"] = margin_earth
@@ -367,6 +478,7 @@ frames_by_site = st.session_state["analysis_frames"]
 waypoint_bank = st.session_state.get("analysis_waypoints", {})
 analysis_start = st.session_state["analysis_start"]
 analysis_end = st.session_state["analysis_end"]
+analysis_window_mode = st.session_state.get("analysis_window_mode", "Custom start / end")
 analysis_step = st.session_state["analysis_step"]
 earth_margin = st.session_state["analysis_earth_margin"]
 
@@ -392,17 +504,43 @@ kpis[3].metric("MEAN EARTH ≥ REF.", "n/a" if pd.isna(mean_earth) else f"{mean_
 
 # Main navigation tabs
 tab_overview, tab_map, tab_timeline, tab_terrain = st.tabs([
-    "◈  Mission overview",
-    "⌖  Lunar map",
-    "◷  Time dynamics",
-    "△  Terrain lab",
+    "◈  Mission deck",
+    "⌖  Lunar radar",
+    "◷  Flight timeline",
+    "△  Terrain systems",
 ])
 
 with tab_overview:
+    st.markdown('<div class="section-kicker">MISSION WINDOW ANALYZER / CONTINUOUS OUTAGE SCREENING</div>', unsafe_allow_html=True)
+    st.subheader("Surface-stay operational window")
+    if analysis_window_mode == "Arrival + surface stay":
+        st.caption("The selected arrival timestamp and planned surface-stay duration define the complete mission window. Outage durations are approximated from the selected Horizons sampling interval.")
+    else:
+        st.caption("The selected custom start/end range defines the analysis window. Outage durations are approximated from the selected Horizons sampling interval.")
+    window_site = st.selectbox("Site for detailed window readout", list(frames_by_site), key="mission_window_site")
+    window_row = summary.loc[summary["Site"] == window_site].iloc[0]
+    earth_gap_col = "Longest Earth below margin (h)"
+    sun_gap_col = "Longest solar darkness (h)"
+    stay_hours_display = (analysis_end - analysis_start).total_seconds() / 3600.0
+    win_metrics = st.columns(4)
+    window_metric_label = "PLANNED SURFACE STAY" if analysis_window_mode == "Arrival + surface stay" else "ANALYSIS WINDOW"
+    win_metrics[0].metric(window_metric_label, f"{stay_hours_display:.1f} h")
+    win_metrics[1].metric("SUN ABOVE HORIZON", f"{window_row.get('Sun geometrically visible (h)', np.nan):.1f} h")
+    win_metrics[2].metric("LONGEST SOLAR DARKNESS", f"{window_row.get(sun_gap_col, np.nan):.2f} h")
+    win_metrics[3].metric("LONGEST EARTH-MARGIN GAP", f"{window_row.get(earth_gap_col, np.nan):.2f} h")
+    sun_gap_text = window_row.get("Longest solar darkness interval (UT)", "n/a")
+    earth_gap_text = window_row.get("Longest Earth gap interval (UT)", "n/a")
+    st.markdown(
+        f"<div class='panel'><div class='instrument-caption'>OPERATIONAL GAP LOG / {window_site}</div>"
+        f"<div class='soft-note' style='margin-top:7px'><b style='color:#F4BD62'>Solar darkness:</b> {sun_gap_text} &nbsp; · &nbsp; "
+        f"<b style='color:#65D5E5'>Earth below {earth_margin:g}°:</b> {earth_gap_text}</div></div>",
+        unsafe_allow_html=True,
+    )
+
     left, right = st.columns([1.25, 0.75], gap="large")
     with left:
         st.markdown('<div class="section-kicker">SITE COMPARISON</div>', unsafe_allow_html=True)
-        st.subheader("Environmental window summary")
+        st.subheader("Cross-site environmental comparison")
         st.dataframe(
             summary,
             width="stretch",
@@ -438,7 +576,7 @@ with tab_overview:
 
 with tab_map:
     st.markdown('<div class="section-kicker">LUNAR GEOSPATIAL CONTEXT</div>', unsafe_allow_html=True)
-    st.subheader("Selected landing-site references")
+    st.subheader("Lunar navigation display")
     st.caption("Global LRO WAC basemap with available mission-specific layers and waypoints. Tile availability depends on NASA Moon Trek services.")
     lunar_map = construir_mapa_lunar(results, waypoint_bank, zoom=7)
     map_state = st_folium(lunar_map, height=600, use_container_width=True, key="lunascout_comparison_map")
@@ -448,7 +586,7 @@ with tab_map:
 
 with tab_timeline:
     st.markdown('<div class="section-kicker">TEMPORAL GEOMETRY / UTC</div>', unsafe_allow_html=True)
-    st.subheader("Sun and Earth apparent elevation")
+    st.subheader("Sun / Earth temporal telemetry")
     st.caption("Solid traces show the Sun; dashed traces show the Earth. Hover to inspect azimuth and elevation at each Horizons timestamp.")
     timeline = crear_timeline_plotly(
         frames_by_site,
@@ -469,7 +607,7 @@ with tab_timeline:
 
 with tab_terrain:
     st.markdown('<div class="section-kicker">DIGITAL ELEVATION MODEL / LOCAL SCREENING</div>', unsafe_allow_html=True)
-    st.subheader("Terrain inspection and candidate scouting")
+    st.subheader("Terrain systems / candidate scouting")
     st.caption("Upload a LOLA/LROC DEM or specify a DEM file already committed to the repository. Local processing uses a window around the selected site rather than loading the complete global raster.")
     site_names = list(frames_by_site)
     selected_terrain_site = st.selectbox("Reference location", site_names, key="terrain_site_select")
@@ -518,8 +656,9 @@ with tab_terrain:
             st.caption(f"DEM CRS: {terrain_output['crs']} · Approx. pixel size: {terrain_output['resolution_x_m']:.2f} m × {terrain_output['resolution_y_m']:.2f} m · Vertical scale factor: {dem_config.get('elevation_to_m_factor', 1.0)} (verify against source DEM metadata).")
 
             st.markdown("---")
-            st.markdown('<div class="section-kicker">EXPERIMENTAL / TOPOGRAPHIC CANDIDATE SEARCH</div>', unsafe_allow_html=True)
-            st.write("Find connected patches near this reference coordinate that satisfy user-defined slope and roughness screens.")
+            st.markdown('<div class="section-kicker">AUTOMATIC LANDING ZONE DETECTION / TOPOGRAPHIC SCREEN</div>', unsafe_allow_html=True)
+            st.write("Search for connected candidate patches around the selected reference coordinate using slope and local roughness constraints.")
+            st.caption("For Haworth, Nobile or Malapert, use a verified regional reference coordinate as a Custom site in the sidebar. The bundled Artemis list contains names only, not authoritative region-center coordinates.")
             c1, c2, c3 = st.columns(3)
             max_slope = c1.slider("Maximum slope (°)", 1.0, 15.0, float(dem_config["candidate_search"]["max_slope_deg"]), 0.5)
             max_rough = c2.slider("Maximum roughness (m)", 0.5, 10.0, float(dem_config["candidate_search"]["max_roughness_m"]), 0.5)
@@ -568,6 +707,33 @@ with tab_terrain:
                 st.dataframe(candidate_output, width="stretch", hide_index=True)
                 pareto_count = int(candidate_output["Pareto"].sum())
                 st.info(f"{pareto_count} candidate(s) are non-dominated across slope, roughness and approximate patch area. This is a topography-only shortlist, not a landing-site safety result.")
+                st.caption("The chart minimizes slope and roughness; marker size represents approximate patch area. Cyan points are non-dominated when all three terrain objectives are considered.")
+                st.plotly_chart(
+                    crear_grafica_pareto_topografica(candidate_output),
+                    width="stretch",
+                    config={"displaylogo": False},
+                )
+                st.markdown("#### Candidate coordinates on the lunar map")
+                candidate_map_records = [{
+                    "sitio": f"Reference · {selected_terrain_site}",
+                    "lat": float(terrain_site["lat"]),
+                    "lon": float(terrain_site["lon"]),
+                    "source": "Selected reference coordinate",
+                }]
+                for _, candidate_row in candidate_output.iterrows():
+                    candidate_map_records.append({
+                        "sitio": f"Candidate {int(candidate_row['candidate_id'])}",
+                        "lat": float(candidate_row["lat"]),
+                        "lon": float(candidate_row["lon"]),
+                        "source": "DEM topographic screening",
+                    })
+                candidate_lunar_map = construir_mapa_lunar(candidate_map_records, {}, zoom=11)
+                st_folium(
+                    candidate_lunar_map,
+                    height=440,
+                    use_container_width=True,
+                    key=f"candidate_map_{selected_terrain_site}",
+                )
                 st.download_button(
                     "Download candidate coordinates CSV",
                     data=candidate_output.to_csv(index=False).encode("utf-8-sig"),
