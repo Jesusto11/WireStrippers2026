@@ -14,15 +14,13 @@ import pandas as pd
 import streamlit as st
 from streamlit_folium import st_folium
 
-from modules.candidate_search import buscar_candidatos_topograficos
 from modules.horizons import evaluar_sitio_lunar, estimar_numero_muestras
 from modules.mission_analysis import construir_tabla_comparativa
-from modules.optimization import filtrar_frontera_pareto
-from modules.terrain import leer_altitud_punto_dem, leer_dem_local
+from modules.terrain import LOLA_IDENTIFY_URL, analizar_dem_via_api, consultar_altitud_lola
 from modules.visualization import (
     cargar_waypoints_apollo,
     crear_grafica_comparacion,
-    crear_grafica_pareto_topografica,
+    crear_mapa_pendiente,
     crear_superficie_3d,
     crear_timeline_plotly,
     construir_mapa_lunar,
@@ -30,7 +28,7 @@ from modules.visualization import (
 
 ROOT = Path(__file__).resolve().parent
 SITES_PATH = ROOT / "data" / "sites.json"
-DEM_CONFIG_PATH = ROOT / "data" / "dem_config.json"
+LOLA_API_CONFIG_PATH = ROOT / "data" / "lola_api_config.json"
 
 st.set_page_config(
     page_title="ECLIPSE | Evaluación de sitios polares lunares",
@@ -212,36 +210,25 @@ def _run_site_analysis(
     end: datetime,
     step: str,
     interval_minutes: int,
-    dem_path: Path | None = None,
-    use_dem_altitude: bool = False,
-    elevation_to_m_factor: float = 1.0,
+    identify_url: str = LOLA_IDENTIFY_URL,
 ) -> tuple[list[dict], list[tuple[str, str]]]:
+    """Consulta primero la altitud LOLA vía API y después las efemérides Horizons."""
     outputs: list[dict] = []
     failures: list[tuple[str, str]] = []
-    progress = st.progress(0, text="Preparando consultas a NASA/JPL Horizons…")
+    progress = st.progress(0, text="Preparando consultas a NASA Moon Trek y JPL Horizons…")
     for index, site in enumerate(sites):
         progress.progress(
             int(index / max(len(sites), 1) * 100),
-            text=f"Consultando {site['nombre']} · {index + 1}/{len(sites)}",
+            text=f"Consultando altitud LOLA y efemérides · {site['nombre']} · {index + 1}/{len(sites)}",
         )
         try:
-            # El DEM se consulta localmente (un solo píxel por sitio).
-            # Si se activa la corrección topográfica, un dato ausente es un error
-            # explícito: no se sustituye silenciosamente por 0 m.
-            if use_dem_altitude:
-                if dem_path is None or not dem_path.is_file():
-                    raise FileNotFoundError("Se solicitó altitud del DEM, pero el archivo no está disponible.")
-                site_altitude_m = leer_altitud_punto_dem(
-                    dem_path,
-                    site["lat"],
-                    site["lon"],
-                    elevation_to_m_factor=elevation_to_m_factor,
-                )
-                altitude_source = "DEM LOLA local"
-            else:
-                site_altitude_m = 0.0
-                altitude_source = "Horizons a 0 m"
-
+            # La altitud se consulta al servicio NASA Moon Trek. Si no hay respuesta
+            # o el punto es NoData, no se usa una altura de 0 m como sustituto.
+            site_altitude_m = consultar_altitud_lola(
+                site["lat"],
+                site["lon"],
+                identify_url=identify_url,
+            )
             result = evaluar_sitio_lunar(
                 site["nombre"],
                 site["lat"],
@@ -254,7 +241,8 @@ def _run_site_analysis(
             result["mision"] = site.get("mision")
             result["source"] = site.get("source")
             result["interval_minutes"] = interval_minutes
-            result["altitude_source"] = altitude_source
+            result["altitude_source"] = "NASA Moon Trek · LRO LOLA DEM 128 ppd (API)"
+            result["altitude_api"] = identify_url
             outputs.append(result)
         except Exception as exc:  # mostrar el error asociado al sitio
             failures.append((site["nombre"], str(exc)))
@@ -395,32 +383,15 @@ with st.sidebar.form("mission_setup_form"):
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("<div class='section-kicker'>DATOS TOPOGRÁFICOS</div>", unsafe_allow_html=True)
-dem_config = _load_json(DEM_CONFIG_PATH)
-dem_relative_path = Path(dem_config.get("default_path", "data/LRO_LOLA_DEM_Global_128ppd_v04.tif"))
-dem_local_path = dem_relative_path if dem_relative_path.is_absolute() else ROOT / dem_relative_path
-dem_local_path = dem_local_path.resolve()
-dem_source_available = dem_local_path.is_file()
-with st.sidebar.expander("Modelo digital de elevación lunar", expanded=False):
-    st.caption("ECLIPSE busca automáticamente el DEM configurado en la carpeta data/. No necesitas cargarlo desde la interfaz.")
-    st.code(str(Path("data") / dem_local_path.name).replace("\\", "/"), language="text")
-    if dem_source_available:
-        size_gb = dem_local_path.stat().st_size / (1024 ** 3)
-        st.success(f"DEM detectado · {size_gb:.2f} GiB")
-    else:
-        st.warning("DEM no encontrado. Coloca el archivo LRO_LOLA_DEM_Global_128ppd_v04.tif dentro de data/.")
-use_dem_altitude_for_horizons = st.sidebar.checkbox(
-    "Aplicar altitud del DEM a JPL Horizons",
-    value=False,
-    disabled=not dem_source_available,
-    help=(
-        "Lee la elevación del píxel correspondiente a cada sitio y la pasa a Horizons "
-        "como altura en kilómetros. Actívalo después de verificar unidades, escala, "
-        "offset y datum vertical del GeoTIFF."
-    ),
-)
-if use_dem_altitude_for_horizons:
-    st.sidebar.info("La altitud se tomará del DEM local para cada sitio. Si una coordenada cae en NoData o fuera del ráster, ese sitio mostrará un error en lugar de asumir 0 m.")
-st.sidebar.caption("Se leen recortes locales del GeoTIFF para evitar cargar el modelo global completo en memoria. Verifica el sistema de referencia, la resolución y las unidades antes de interpretar la pendiente o la rugosidad.")
+lola_api_config = _load_json(LOLA_API_CONFIG_PATH)
+lola_identify_url = str(lola_api_config.get("identify_url", LOLA_IDENTIFY_URL))
+with st.sidebar.expander("Altimetría lunar · NASA Moon Trek", expanded=False):
+    st.success("Fuente configurada · LRO LOLA DEM Global 128 ppd")
+    st.caption("La altitud se consulta en línea mediante la operación ImageServer/identify. No requiere descargar ni almacenar el GeoTIFF global.")
+    st.caption("El resultado puntual se incorpora automáticamente a las coordenadas de observador de JPL Horizons.")
+    st.link_button("Abrir servicio de NASA Moon Trek", lola_identify_url, width="stretch")
+st.sidebar.caption("La consulta necesita conexión a internet y disponibilidad del servicio NASA. Si el punto no tiene dato o el servicio falla, el sitio se reporta como error; ECLIPSE no sustituye la elevación por 0 m.")
+st.sidebar.warning("La elevación LOLA se transfiere directamente a Horizons. La equivalencia exacta entre el datum de LOLA y la superficie de referencia IAU de Horizons todavía debe verificarse para uso de ingeniería de misión.")
 with st.sidebar.expander("Regiones históricas de estudio del polo sur (Artemis)"):
     artemis_metadata = _load_json(ROOT / "data" / "artemis_study_regions.json")
     st.caption(artemis_metadata["description"])
@@ -467,9 +438,7 @@ if run_button:
                     end_ut,
                     step_size,
                     interval_minutes,
-                    dem_path=dem_local_path if use_dem_altitude_for_horizons else None,
-                    use_dem_altitude=use_dem_altitude_for_horizons,
-                    elevation_to_m_factor=float(dem_config.get("elevation_to_m_factor", 1.0)),
+                    identify_url=lola_identify_url,
                 )
                 if outputs:
                     summary, frame_map = construir_tabla_comparativa(
@@ -493,10 +462,10 @@ if run_button:
                     st.session_state["analysis_earth_margin"] = margin_earth
                     st.session_state["analysis_min_sun_percent"] = min_sun_percent
                     st.session_state["analysis_min_earth_percent"] = min_earth_percent
-                    st.session_state["analysis_used_dem_altitude"] = use_dem_altitude_for_horizons
                     st.session_state["analysis_failures"] = failures
                     st.session_state.pop("terrain_output", None)
-                    st.session_state.pop("candidate_output", None)
+                    st.session_state.pop("terrain_api_output", None)
+                    st.session_state.pop("terrain_api_site_name", None)
                     st.sidebar.success(f"Análisis completado: {len(outputs)} sitio(s).")
                 else:
                     st.sidebar.error("No se obtuvieron resultados. Comprueba la conexión y los parámetros de Horizons.")
@@ -563,8 +532,8 @@ with tab_overview:
     st.markdown('<div class="section-kicker">ALTITUD DEL PUNTO DE OBSERVACIÓN</div>', unsafe_allow_html=True)
     altitude_rows = [{
         "Sitio": item["sitio"],
-        "Altitud utilizada (m)": item.get("altitud_metros", 0.0),
-        "Origen": item.get("altitude_source", "Horizons a 0 m"),
+        "Altitud utilizada (m)": item.get("altitud_metros", np.nan),
+        "Origen": item.get("altitude_source", "NASA LOLA API"),
     } for item in results]
     st.dataframe(
         pd.DataFrame(altitude_rows),
@@ -572,10 +541,7 @@ with tab_overview:
         hide_index=True,
         column_config={"Altitud utilizada (m)": st.column_config.NumberColumn(format="%.2f m")},
     )
-    if st.session_state.get("analysis_used_dem_altitude", False):
-        st.caption("Horizons recibió la elevación de cada sitio del DEM, convertida de metros a kilómetros. Confirma que el datum y la escala vertical del GeoTIFF sean compatibles con la superficie de referencia lunar utilizada por Horizons.")
-    else:
-        st.caption("Este análisis utilizó una altura de observador de 0 m en Horizons. Puedes activar la corrección topográfica en la barra lateral después de verificar el datum y las unidades del DEM.")
+    st.caption("Las elevaciones se consultaron en NASA Moon Trek (LRO LOLA DEM Global 128 ppd) y se pasaron a JPL Horizons como altura del observador, convertidas de metros a kilómetros. La disponibilidad depende del servicio y de la cobertura de datos del punto consultado.")
 
     st.markdown('<div class="section-kicker">ANALIZADOR DE VENTANA DE MISIÓN / INTERRUPCIONES CONTINUAS</div>', unsafe_allow_html=True)
     st.subheader("Ventana operativa de estancia en superficie")
@@ -702,131 +668,119 @@ with tab_timeline:
         )
 
 with tab_terrain:
-    st.markdown('<div class="section-kicker">MODELO DIGITAL DE ELEVACIÓN / ANÁLISIS LOCAL</div>', unsafe_allow_html=True)
-    st.subheader("Análisis del terreno y búsqueda de candidatos")
-    st.caption("Se utiliza el DEM LOLA configurado en la carpeta data/. El procesamiento lee una ventana alrededor del sitio seleccionado, en lugar de cargar todo el ráster global.")
+    st.markdown('<div class="section-kicker">NASA MOON TREK / LRO LOLA 128 PPd</div>', unsafe_allow_html=True)
+    st.subheader("Altimetría y relieve local")
+    st.caption(
+        "ECLIPSE consulta el ImageServer de NASA para obtener la elevación en el punto y "
+        "una micromalla alrededor de la coordenada seleccionada. No se necesita un TIFF local."
+    )
     site_names = list(frames_by_site)
     selected_terrain_site = st.selectbox("Ubicación de referencia", site_names, key="terrain_site_select")
     terrain_site = next(item for item in results if item["sitio"] == selected_terrain_site)
-    dem_source_available = dem_local_path.is_file()
-    if not dem_source_available:
-        st.info("No se detectó el DEM configurado. Coloca el GeoTIFF indicado dentro de la carpeta data/.")
-    else:
-        terrain_col1, terrain_col2 = st.columns([1, 1])
-        with terrain_col1:
-            radius_px = st.slider("Radio de análisis local del DEM (píxeles)", 30, 250, int(dem_config.get("default_window_radius_px", 100)), 10)
-        with terrain_col2:
-            st.markdown("<div class='panel'><b>Nota de evaluación</b><p class='soft-note'>La pendiente y la rugosidad local son indicadores topográficos preliminares. Este prototipo no certifica una elipse de aterrizaje ni evalúa todos los riesgos específicos del vehículo.</p></div>", unsafe_allow_html=True)
+    terrain_config = lola_api_config.get("terrain_sampling", {})
+    grid_size = st.select_slider(
+        "Tamaño de la micromalla de altitud",
+        options=list(terrain_config.get("allowed_grid_sizes", [3, 5, 7])),
+        value=int(terrain_config.get("default_grid_size", 5)),
+        help="Cada nodo se consulta individualmente al servicio LOLA. Una malla mayor genera más solicitudes y tarda más.",
+    )
+    st.markdown(
+        "<div class='panel'><b>Alcance del muestreo</b>"
+        "<p class='soft-note'>La malla usa el paso nominal de 1/128° del producto. La distancia norte-sur es aproximadamente "
+        "237 m por muestra; la distancia este-oeste disminuye con cos(latitud). La pendiente se estima numéricamente "
+        "a partir de las muestras válidas. Esto no equivale a una superficie continua de alta resolución ni a un análisis de línea de visión.</p></div>",
+        unsafe_allow_html=True,
+    )
 
-        if st.button("ANALIZAR TERRENO SELECCIONADO", type="primary", width="content"):
-            try:
-                with st.spinner("Leyendo la ventana local del DEM y calculando las variables del terreno…"):
-                    terrain_output = leer_dem_local(
-                        dem_local_path,
-                        terrain_site["lat"],
-                        terrain_site["lon"],
-                        radius_px=radius_px,
-                        elevation_to_m_factor=float(dem_config.get("elevation_to_m_factor", 1.0)),
-                    )
-                st.session_state["terrain_output"] = terrain_output
-                st.session_state["terrain_site_name"] = selected_terrain_site
-            except Exception as exc:
-                st.error(f"Falló el análisis del DEM: {exc}")
-
-        terrain_output = st.session_state.get("terrain_output")
-        if terrain_output and st.session_state.get("terrain_site_name") == selected_terrain_site:
-            tm = st.columns(3)
-            tm[0].metric("Elevación en el punto", "N/D" if not np.isfinite(terrain_output["point_elevation"]) else f"{terrain_output['point_elevation']:.2f} m")
-            tm[1].metric("Pendiente local", "N/D" if not np.isfinite(terrain_output["point_slope_deg"]) else f"{terrain_output['point_slope_deg']:.2f}°")
-            tm[2].metric("Pendiente local media", f"{terrain_output['mean_slope_deg']:.2f}°")
-            st.plotly_chart(crear_superficie_3d(terrain_output["elevation"], f"Terreno local · {selected_terrain_site}"), width="stretch")
-            st.caption(f"Sistema de referencia del DEM: {terrain_output['crs']} · Tamaño aproximado del píxel: {terrain_output['resolution_x_m']:.2f} m × {terrain_output['resolution_y_m']:.2f} m · Factor de escala vertical: {dem_config.get('elevation_to_m_factor', 1.0)} (verifica los metadatos del producto).")
-
-            st.markdown("---")
-            st.markdown('<div class="section-kicker">DETECCIÓN AUTOMÁTICA DE ZONAS DE ATERRIZAJE / FILTRO TOPOGRÁFICO</div>', unsafe_allow_html=True)
-            st.write("Busca parches contiguos candidatos alrededor de la coordenada de referencia, utilizando restricciones de pendiente y rugosidad local.")
-            st.caption("Para Haworth, Nobile o Malapert, utiliza una coordenada regional verificada como sitio personalizado. El catálogo de Artemis incluido contiene nombres, no coordenadas oficiales del centro de cada región.")
-            c1, c2, c3 = st.columns(3)
-            max_slope = c1.slider("Pendiente máxima (°)", 1.0, 15.0, float(dem_config["candidate_search"]["max_slope_deg"]), 0.5)
-            max_rough = c2.slider("Rugosidad máxima (m)", 0.5, 10.0, float(dem_config["candidate_search"]["max_roughness_m"]), 0.5)
-            max_count = c3.slider("Máximo de candidatos", 3, 30, 12)
-            if st.button("BUSCAR CANDIDATOS TOPOGRÁFICOS", width="stretch"):
-                try:
-                    with st.spinner("Evaluando parches del DEM…"):
-                        candidates = buscar_candidatos_topograficos(
-                            dem_local_path,
-                            terrain_site["lat"],
-                            terrain_site["lon"],
-                            search_radius_px=max(60, radius_px),
-                            max_slope_deg=max_slope,
-                            max_roughness_m=max_rough,
-                            min_component_pixels=int(dem_config["candidate_search"]["minimum_component_pixels"]),
-                            min_spacing_m=float(dem_config["candidate_search"]["minimum_spacing_m"]),
-                            max_candidates=max_count,
-                            elevation_to_m_factor=float(dem_config.get("elevation_to_m_factor", 1.0)),
-                        )
-                    if candidates.empty:
-                        st.warning("Ningún parche cumplió los filtros seleccionados. Aumenta el radio de búsqueda o revisa los umbrales.")
-                        st.session_state.pop("candidate_output", None)
-                    else:
-                        candidates = filtrar_frontera_pareto(
-                            candidates,
-                            objective_columns=["slope_deg", "roughness_m", "area_km2_approx"],
-                            maximize=["area_km2_approx"],
-                        )
-                        st.session_state["candidate_output"] = candidates
-                        st.session_state["candidate_site_name"] = selected_terrain_site
-                except Exception as exc:
-                    st.error(f"Falló la búsqueda de candidatos: {exc}")
-
-            candidate_output = st.session_state.get("candidate_output")
-            if candidate_output is not None and st.session_state.get("candidate_site_name") == selected_terrain_site:
-                st.markdown("#### Parches candidatos por topografía")
-                candidatos_es = candidate_output.rename(columns={
-                    "candidate_id": "Candidato", "lat": "Latitud (°)", "lon": "Longitud (°)",
-                    "slope_deg": "Pendiente (°)", "roughness_m": "Rugosidad (m)",
-                    "component_pixels": "Píxeles del parche", "area_km2_approx": "Área aproximada (km²)",
-                    "Pareto": "Frontera de Pareto",
-                })
-                st.dataframe(candidatos_es, width="stretch", hide_index=True)
-                pareto_count = int(candidate_output["Pareto"].sum())
-                st.info(f"{pareto_count} candidato(s) no están dominados en pendiente, rugosidad y área aproximada del parche. Esta preselección considera únicamente la topografía y no representa una evaluación de seguridad de aterrizaje.")
-                st.caption("La gráfica minimiza la pendiente y la rugosidad; el tamaño del marcador representa el área aproximada del parche. Los puntos cian son no dominados al considerar los tres objetivos topográficos.")
-                st.plotly_chart(
-                    crear_grafica_pareto_topografica(candidate_output),
-                    width="stretch",
-                    config={"displaylogo": False},
+    if st.button("CONSULTAR ALTITUD Y ANALIZAR RELIEVE", type="primary", width="content"):
+        try:
+            with st.spinner(f"Consultando {grid_size * grid_size} puntos en NASA Moon Trek…"):
+                terrain_output = analizar_dem_via_api(
+                    terrain_site["lat"],
+                    terrain_site["lon"],
+                    n=int(grid_size),
+                    identify_url=lola_identify_url,
+                    max_workers=int(lola_api_config.get("max_parallel_requests", 8)),
+                    lunar_radius_m=float(lola_api_config.get("lunar_reference_radius_m", 1_737_400.0)),
                 )
-                st.markdown("#### Coordenadas candidatas en el mapa lunar")
-                candidate_map_records = [{
-                    "sitio": f"Referencia · {selected_terrain_site}",
-                    "lat": float(terrain_site["lat"]),
-                    "lon": float(terrain_site["lon"]),
-                    "source": "Coordenada de referencia seleccionada",
-                }]
-                for _, candidate_row in candidate_output.iterrows():
-                    candidate_map_records.append({
-                        "sitio": f"Candidato {int(candidate_row['candidate_id'])}",
-                        "lat": float(candidate_row["lat"]),
-                        "lon": float(candidate_row["lon"]),
-                        "source": "Preselección topográfica del DEM",
-                    })
-                candidate_lunar_map = construir_mapa_lunar(candidate_map_records, {}, zoom=11)
-                st_folium(
-                    candidate_lunar_map,
-                    height=440,
-                    use_container_width=True,
-                    key=f"candidate_map_{selected_terrain_site}",
-                )
-                st.download_button(
-                    "Descargar coordenadas candidatas en CSV",
-                    data=candidatos_es.to_csv(index=False).encode("utf-8-sig"),
-                    file_name="eclipse_candidatos_topograficos.csv",
-                    mime="text/csv",
-                )
+            st.session_state["terrain_api_output"] = terrain_output
+            st.session_state["terrain_api_site_name"] = selected_terrain_site
+        except Exception as exc:
+            st.session_state.pop("terrain_api_output", None)
+            st.error(f"No se pudo completar el análisis topográfico: {exc}")
+
+    terrain_output = st.session_state.get("terrain_api_output")
+    if terrain_output and st.session_state.get("terrain_api_site_name") == selected_terrain_site:
+        st.markdown("### Lecturas del entorno")
+        tm = st.columns(4)
+        tm[0].metric("Altitud del punto", f"{terrain_output['point_elevation']:.2f} m")
+        tm[1].metric("Pendiente central", f"{terrain_output['point_slope_deg']:.2f}°")
+        tm[2].metric("Desnivel de la malla", f"{terrain_output['relief_m']:.2f} m")
+        tm[3].metric("Muestras válidas", f"{terrain_output['valid_samples']}/{terrain_output['total_samples']}")
+
+        left, right = st.columns([1.15, 0.85])
+        with left:
+            st.plotly_chart(
+                crear_superficie_3d(
+                    terrain_output["elevation"],
+                    f"Superficie LOLA local · {selected_terrain_site}",
+                    resolution_x_m=terrain_output["resolution_x_m"],
+                    resolution_y_m=terrain_output["resolution_y_m"],
+                ),
+                width="stretch",
+                config={"displaylogo": False},
+            )
+        with right:
+            st.plotly_chart(
+                crear_mapa_pendiente(
+                    terrain_output["slope_deg"],
+                    "Pendiente estimada de la micromalla",
+                ),
+                width="stretch",
+                config={"displaylogo": False},
+            )
+
+        st.markdown("#### Matriz de elevaciones consultadas")
+        matrix_frame = pd.DataFrame(
+            terrain_output["elevation"],
+            index=[f"Fila {i + 1}" for i in range(terrain_output["grid_size"])],
+            columns=[f"Columna {i + 1}" for i in range(terrain_output["grid_size"])],
+        )
+        st.dataframe(
+            matrix_frame.style.format("{:.2f} m", na_rep="NoData"),
+            width="stretch",
+        )
+        details_col1, details_col2, details_col3 = st.columns(3)
+        details_col1.metric("Pendiente media muestreada", f"{terrain_output['mean_slope_deg']:.2f}°")
+        details_col2.metric("Desviación estándar de elevación", f"{terrain_output['elevation_std_m']:.2f} m")
+        details_col3.metric("Muestras con pendiente menor a 5°", f"{terrain_output['fraction_slope_below_5deg_pct']:.1f}%")
+        st.caption(
+            f"Fuente: {terrain_output['source']} · Separación aproximada: "
+            f"{terrain_output['resolution_y_m']:.1f} m N-S × {terrain_output['resolution_x_m']:.1f} m E-O "
+            f"· Radio de referencia lunar: {terrain_output['reference_radius_m']:,.0f} m. "
+            "La rugosidad se resume aquí mediante el desnivel máximo y la desviación estándar de las muestras; "
+            "no es una métrica oficial de aceptación de un vehículo."
+        )
+        st.download_button(
+            "Descargar micromalla LOLA en CSV",
+            data=pd.DataFrame(terrain_output["elevation"]).to_csv(index=False, header=False).encode("utf-8-sig"),
+            file_name=f"eclipse_lola_micromalla_{selected_terrain_site.lower().replace(' ', '_')}.csv",
+            mime="text/csv",
+        )
+
+    st.markdown("---")
+    st.markdown("#### Búsqueda de zonas candidatas")
+    st.info(
+        "La búsqueda automática de parches candidatos se ha retirado de esta versión. "
+        "El servicio identify devuelve elevaciones puntuales; la micromalla de 3×3 a 7×7 "
+        "muestras sirve para caracterizar el entorno inmediato, pero no proporciona la "
+        "cobertura continua necesaria para detectar y delimitar zonas de aterrizaje extensas. "
+        "Para recuperar esa función se necesitaría consumir un servicio de subsetting/áreas "
+        "o un DEM regional alojado en la nube."
+    )
 
 st.divider()
 st.markdown(
-    "<div class='soft-note'>ECLIPSE es un prototipo de análisis exploratorio. La visibilidad geométrica no equivale a un enlace de radio verificado; el filtro de pendiente y rugosidad no certifica un sitio de aterrizaje; y los promedios de puntos de recorrido no son coordenadas oficiales de contacto. Verifica la procedencia de los datos, los sistemas de referencia, las unidades verticales del DEM y los requisitos de cada misión antes de utilizar los resultados con fines de ingeniería.</div>",
+    "<div class='soft-note'>ECLIPSE es un prototipo de análisis exploratorio. La visibilidad geométrica no equivale a un enlace de radio verificado; la micromalla de altitud y pendiente no certifica un sitio de aterrizaje ni sustituye un análisis de sombras por azimut; y los promedios de puntos de recorrido no son coordenadas oficiales de contacto. Verifica la procedencia de los datos, la compatibilidad de datums verticales y los requisitos de cada misión antes de utilizar los resultados con fines de ingeniería.</div>",
     unsafe_allow_html=True,
 )

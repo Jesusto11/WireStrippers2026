@@ -1,0 +1,18 @@
+{
+  "source_name": "NASA Moon Trek - LRO LOLA DEM Global 128 ppd",
+  "identify_url": "https://trek.nasa.gov/moon/trekarcgis/rest/services/LRO_LOLA_DEM_Global_128ppd_v04/ImageServer/identify",
+  "pixels_per_degree": 128,
+  "default_grid_size": 5,
+  "max_parallel_requests": 8,
+  "lunar_reference_radius_m": 1737400.0,
+  "terrain_sampling": {
+    "default_grid_size": 5,
+    "allowed_grid_sizes": [3, 5, 7]
+  },
+  "notes": [
+    "La altitud se obtiene en línea mediante ImageServer/identify; no se necesita un GeoTIFF local.",
+    "El valor del servicio se interpreta en metros, como en el ejemplo de consulta del producto LOLA 128 ppd.",
+    "La micromalla sirve para estimar relieve y pendiente local; no reemplaza un DEM continuo para búsquedas extensas de zonas candidatas.",
+    "Horizons espera altura respecto a la superficie de referencia IAU del cuerpo. La correspondencia del datum vertical de LOLA debe verificarse antes de usar resultados como ingeniería certificada."
+  ]
+}

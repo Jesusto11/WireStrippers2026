@@ -282,22 +282,70 @@ def crear_grafica_comparacion(df_summary: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def crear_superficie_3d(elevation: np.ndarray, title: str = "Modelo de elevación local") -> go.Figure:
-    """Genera una superficie 3D sencilla a partir de una matriz DEM recortada."""
+def crear_superficie_3d(
+    elevation: np.ndarray,
+    title: str = "Relieve local muestreado por LOLA",
+    resolution_x_m: float | None = None,
+    resolution_y_m: float | None = None,
+) -> go.Figure:
+    """Representa en 3D la micromalla de elevaciones consultada a LOLA."""
     z = np.asarray(elevation, dtype=float)
     if z.ndim != 2:
         raise ValueError("La matriz de elevación debe ser bidimensional.")
-    stride = max(1, int(max(z.shape) / 250))
-    z = z[::stride, ::stride]
-    y_grid, x_grid = np.indices(z.shape)
-    fig = go.Figure(data=[go.Surface(x=x_grid, y=y_grid, z=z, colorscale=[[0, "#05080D"], [0.22, "#0B1D39"], [0.48, "#123A63"], [0.76, "#2F5D8A"], [1, "#C3D8E8"]], connectgaps=False)])
+    step_x = float(resolution_x_m or 1.0) / 1000.0
+    step_y = float(resolution_y_m or 1.0) / 1000.0
+    x_grid = np.arange(z.shape[1], dtype=float) * step_x
+    y_grid = np.arange(z.shape[0], dtype=float) * step_y
+    fig = go.Figure(data=[go.Surface(
+        x=x_grid,
+        y=y_grid,
+        z=z,
+        colorscale=[[0, "#05080D"], [0.22, "#0B1D39"], [0.48, "#123A63"], [0.76, "#2F5D8A"], [1, "#C3D8E8"]],
+        colorbar=dict(title="Altitud (m)"),
+        connectgaps=False,
+        hovertemplate="Este: %{x:.3f} km<br>Norte: %{y:.3f} km<br>Altitud: %{z:.2f} m<extra></extra>",
+    )])
     fig.update_layout(
         title=title,
         template="plotly_dark",
-        scene=dict(xaxis_title="Columna del píxel", yaxis_title="Fila del píxel", zaxis_title="Elevación (unidades del DEM)"),
+        scene=dict(
+            xaxis_title="Distancia este-oeste (km)",
+            yaxis_title="Distancia norte-sur (km)",
+            zaxis_title="Elevación LOLA (m)",
+            aspectmode="manual",
+            aspectratio=dict(x=1.0, y=1.0, z=0.55),
+        ),
         paper_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=0, r=0, t=50, b=0),
-        height=560,
+        height=500,
+    )
+    return fig
+
+
+def crear_mapa_pendiente(slope_deg: np.ndarray, title: str = "Pendiente local estimada por LOLA") -> go.Figure:
+    """Muestra la pendiente estimada a partir de la micromalla de elevaciones."""
+    values = np.asarray(slope_deg, dtype=float)
+    if values.ndim != 2:
+        raise ValueError("La matriz de pendientes debe ser bidimensional.")
+    fig = go.Figure(data=[go.Heatmap(
+        z=values,
+        colorscale="Turbo",
+        zmin=0,
+        zmax=max(15.0, float(np.nanmax(values)) if np.isfinite(values).any() else 15.0),
+        colorbar=dict(title="Pendiente (°)"),
+        hovertemplate="Fila: %{y}<br>Columna: %{x}<br>Pendiente: %{z:.2f}°<extra></extra>",
+    )])
+    fig.update_layout(
+        title=title,
+        template="plotly_dark",
+        xaxis_title="Muestra este-oeste",
+        yaxis_title="Muestra norte-sur",
+        yaxis=dict(autorange="reversed"),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(5,18,32,.45)",
+        font=dict(family="Manrope, sans-serif", color="#DCE7F1"),
+        margin=dict(l=15, r=15, t=50, b=35),
+        height=420,
     )
     return fig
 

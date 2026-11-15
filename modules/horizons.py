@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 from datetime import datetime
+from math import isfinite
 from typing import Any
 
 import pandas as pd
@@ -104,13 +105,20 @@ def consultar_objeto_horizons(
     fecha_inicio: str,
     fecha_fin: str,
     paso: str,
-    altitud_metros: float = 0.0,
+    altitud_metros: float,
 ) -> pd.DataFrame:
     """Consulta un objeto visto desde una ubicación lunar.
 
-    altitud_metros se expresa en metros sobre la superficie de referencia del
-    DEM y se convierte a kilómetros para el parámetro SITE_COORD de Horizons.
+    altitud_metros es la elevación puntual obtenida desde NASA Moon Trek/LOLA.
+    Se convierte a kilómetros para SITE_COORD. Horizons interpreta la altura
+    geodética respecto a la superficie de referencia lunar de su modelo.
+    La compatibilidad exacta entre datums verticales debe verificarse para uso
+    de ingeniería de misión.
     """
+    altitude = float(altitud_metros)
+    if not isfinite(altitude):
+        raise ValueError("Se requiere una elevación LOLA válida y finita para consultar Horizons.")
+
     params = {
         "format": "json",
         "COMMAND": str(comando),
@@ -121,7 +129,7 @@ def consultar_objeto_horizons(
         "COORD_TYPE": "GEODETIC",
         "SITE_COORD": (
             f"{float(longitud):.8f},{float(latitud):.8f},"
-            f"{float(altitud_metros) / 1000.0:.6f}"
+            f"{altitude / 1000.0:.6f}"
         ),
         "START_TIME": str(fecha_inicio),
         "STOP_TIME": str(fecha_fin),
@@ -153,7 +161,7 @@ def evaluar_sitio_lunar(
     fecha_inicio: str,
     fecha_fin: str,
     paso: str,
-    altitud_metros: float = 0.0,
+    altitud_metros: float,
 ) -> dict[str, Any]:
     """Une las series del Sol y de la Tierra para un sitio y ventana temporal."""
     sun = consultar_objeto_horizons(

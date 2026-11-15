@@ -9,7 +9,3 @@ venv/
 *.tiff
 *.vrt
 *.aux.xml
-
-# Modelo digital de elevación LOLA (se mantiene local)
-data/*.tif
-data/*.tiff
