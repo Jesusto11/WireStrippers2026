@@ -78,6 +78,47 @@ def _terrain_derivatives(elevation: np.ndarray, dy_m: float, dx_m: float) -> tup
     return slope, roughness
 
 
+def leer_altitud_punto_dem(
+    dem_path: str | Path,
+    lat: float,
+    lon: float,
+    elevation_to_m_factor: float = 1.0,
+) -> float:
+    """Lee la elevación de un único píxel del DEM en metros.
+
+    Aplica la escala/offset declarados en el GeoTIFF y el factor vertical de
+    dem_config.json. No carga el ráster global completo en memoria.
+    """
+    path = Path(dem_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"No se encontró el DEM: {path}")
+
+    with rasterio.open(path) as dataset:
+        x, y = _site_to_dataset_xy(dataset, lat, lon)
+        row, col = dataset.index(x, y)
+        if not (0 <= row < dataset.height and 0 <= col < dataset.width):
+            raise ValueError(
+                f"La coordenada ({lat:.6f}, {lon:.6f}) queda fuera de la cobertura del DEM."
+            )
+
+        pixel = dataset.read(
+            1, window=Window(col, row, 1, 1), masked=True
+        )
+        if pixel.size == 0 or np.ma.is_masked(pixel[0, 0]):
+            raise ValueError(
+                f"El DEM no contiene un dato válido para ({lat:.6f}, {lon:.6f})."
+            )
+
+        raw_value = float(pixel[0, 0])
+        band_scale = float(dataset.scales[0]) if dataset.scales else 1.0
+        band_offset = float(dataset.offsets[0]) if dataset.offsets else 0.0
+        elevation_m = (raw_value * band_scale + band_offset) * float(elevation_to_m_factor)
+
+        if not np.isfinite(elevation_m):
+            raise ValueError("El DEM devolvió una elevación no finita para el punto seleccionado.")
+        return float(elevation_m)
+
+
 def leer_dem_local(
     dem_path: str | Path,
     lat: float,

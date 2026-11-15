@@ -104,8 +104,13 @@ def consultar_objeto_horizons(
     fecha_inicio: str,
     fecha_fin: str,
     paso: str,
+    altitud_metros: float = 0.0,
 ) -> pd.DataFrame:
-    """Consulta un objeto visto desde una ubicación lunar."""
+    """Consulta un objeto visto desde una ubicación lunar.
+
+    altitud_metros se expresa en metros sobre la superficie de referencia del
+    DEM y se convierte a kilómetros para el parámetro SITE_COORD de Horizons.
+    """
     params = {
         "format": "json",
         "COMMAND": str(comando),
@@ -114,7 +119,10 @@ def consultar_objeto_horizons(
         "EPHEM_TYPE": "OBSERVER",
         "CENTER": "coord@301",
         "COORD_TYPE": "GEODETIC",
-        "SITE_COORD": f"{float(longitud):.8f},{float(latitud):.8f},0",
+        "SITE_COORD": (
+            f"{float(longitud):.8f},{float(latitud):.8f},"
+            f"{float(altitud_metros) / 1000.0:.6f}"
+        ),
         "START_TIME": str(fecha_inicio),
         "STOP_TIME": str(fecha_fin),
         "STEP_SIZE": str(paso),
@@ -145,16 +153,17 @@ def evaluar_sitio_lunar(
     fecha_inicio: str,
     fecha_fin: str,
     paso: str,
+    altitud_metros: float = 0.0,
 ) -> dict[str, Any]:
     """Une las series del Sol y de la Tierra para un sitio y ventana temporal."""
     sun = consultar_objeto_horizons(
-        SUN_COMMAND, latitud, longitud, fecha_inicio, fecha_fin, paso
+        SUN_COMMAND, latitud, longitud, fecha_inicio, fecha_fin, paso, altitud_metros
     ).rename(columns={
         "azimuth_deg": "sun_azimuth_deg",
         "elevation_deg": "sun_elevation_deg",
     })
     earth = consultar_objeto_horizons(
-        EARTH_COMMAND, latitud, longitud, fecha_inicio, fecha_fin, paso
+        EARTH_COMMAND, latitud, longitud, fecha_inicio, fecha_fin, paso, altitud_metros
     ).rename(columns={
         "azimuth_deg": "earth_azimuth_deg",
         "elevation_deg": "earth_elevation_deg",
@@ -172,6 +181,7 @@ def evaluar_sitio_lunar(
         "sitio": nombre,
         "lat": float(latitud),
         "lon": float(longitud),
+        "altitud_metros": float(altitud_metros),
         "datos": frame,
     }
 

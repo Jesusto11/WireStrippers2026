@@ -18,7 +18,7 @@ from modules.candidate_search import buscar_candidatos_topograficos
 from modules.horizons import evaluar_sitio_lunar, estimar_numero_muestras
 from modules.mission_analysis import construir_tabla_comparativa
 from modules.optimization import filtrar_frontera_pareto
-from modules.terrain import leer_dem_local
+from modules.terrain import leer_altitud_punto_dem, leer_dem_local
 from modules.visualization import (
     cargar_waypoints_apollo,
     crear_grafica_comparacion,
@@ -207,7 +207,14 @@ def _format_value(value: float, suffix: str = "°") -> str:
 
 
 def _run_site_analysis(
-    sites: list[dict], start: datetime, end: datetime, step: str, interval_minutes: int
+    sites: list[dict],
+    start: datetime,
+    end: datetime,
+    step: str,
+    interval_minutes: int,
+    dem_path: Path | None = None,
+    use_dem_altitude: bool = False,
+    elevation_to_m_factor: float = 1.0,
 ) -> tuple[list[dict], list[tuple[str, str]]]:
     outputs: list[dict] = []
     failures: list[tuple[str, str]] = []
@@ -218,6 +225,23 @@ def _run_site_analysis(
             text=f"Consultando {site['nombre']} · {index + 1}/{len(sites)}",
         )
         try:
+            # El DEM se consulta localmente (un solo píxel por sitio).
+            # Si se activa la corrección topográfica, un dato ausente es un error
+            # explícito: no se sustituye silenciosamente por 0 m.
+            if use_dem_altitude:
+                if dem_path is None or not dem_path.is_file():
+                    raise FileNotFoundError("Se solicitó altitud del DEM, pero el archivo no está disponible.")
+                site_altitude_m = leer_altitud_punto_dem(
+                    dem_path,
+                    site["lat"],
+                    site["lon"],
+                    elevation_to_m_factor=elevation_to_m_factor,
+                )
+                altitude_source = "DEM LOLA local"
+            else:
+                site_altitude_m = 0.0
+                altitude_source = "Horizons a 0 m"
+
             result = evaluar_sitio_lunar(
                 site["nombre"],
                 site["lat"],
@@ -225,10 +249,12 @@ def _run_site_analysis(
                 start.strftime("%Y-%m-%d %H:%M"),
                 end.strftime("%Y-%m-%d %H:%M"),
                 step,
+                altitud_metros=site_altitude_m,
             )
             result["mision"] = site.get("mision")
             result["source"] = site.get("source")
             result["interval_minutes"] = interval_minutes
+            result["altitude_source"] = altitude_source
             outputs.append(result)
         except Exception as exc:  # mostrar el error asociado al sitio
             failures.append((site["nombre"], str(exc)))
@@ -382,6 +408,18 @@ with st.sidebar.expander("Modelo digital de elevación lunar", expanded=False):
         st.success(f"DEM detectado · {size_gb:.2f} GiB")
     else:
         st.warning("DEM no encontrado. Coloca el archivo LRO_LOLA_DEM_Global_128ppd_v04.tif dentro de data/.")
+use_dem_altitude_for_horizons = st.sidebar.checkbox(
+    "Aplicar altitud del DEM a JPL Horizons",
+    value=False,
+    disabled=not dem_source_available,
+    help=(
+        "Lee la elevación del píxel correspondiente a cada sitio y la pasa a Horizons "
+        "como altura en kilómetros. Actívalo después de verificar unidades, escala, "
+        "offset y datum vertical del GeoTIFF."
+    ),
+)
+if use_dem_altitude_for_horizons:
+    st.sidebar.info("La altitud se tomará del DEM local para cada sitio. Si una coordenada cae en NoData o fuera del ráster, ese sitio mostrará un error en lugar de asumir 0 m.")
 st.sidebar.caption("Se leen recortes locales del GeoTIFF para evitar cargar el modelo global completo en memoria. Verifica el sistema de referencia, la resolución y las unidades antes de interpretar la pendiente o la rugosidad.")
 with st.sidebar.expander("Regiones históricas de estudio del polo sur (Artemis)"):
     artemis_metadata = _load_json(ROOT / "data" / "artemis_study_regions.json")
@@ -423,7 +461,16 @@ if run_button:
             if estimated > 5000:
                 st.sidebar.error("Esta ventana generaría demasiadas muestras para esta versión. Aumenta el intervalo de muestreo.")
             else:
-                outputs, failures = _run_site_analysis(sites, start_ut, end_ut, step_size, interval_minutes)
+                outputs, failures = _run_site_analysis(
+                    sites,
+                    start_ut,
+                    end_ut,
+                    step_size,
+                    interval_minutes,
+                    dem_path=dem_local_path if use_dem_altitude_for_horizons else None,
+                    use_dem_altitude=use_dem_altitude_for_horizons,
+                    elevation_to_m_factor=float(dem_config.get("elevation_to_m_factor", 1.0)),
+                )
                 if outputs:
                     summary, frame_map = construir_tabla_comparativa(
                         outputs,
@@ -446,6 +493,7 @@ if run_button:
                     st.session_state["analysis_earth_margin"] = margin_earth
                     st.session_state["analysis_min_sun_percent"] = min_sun_percent
                     st.session_state["analysis_min_earth_percent"] = min_earth_percent
+                    st.session_state["analysis_used_dem_altitude"] = use_dem_altitude_for_horizons
                     st.session_state["analysis_failures"] = failures
                     st.session_state.pop("terrain_output", None)
                     st.session_state.pop("candidate_output", None)
@@ -512,6 +560,23 @@ tab_overview, tab_map, tab_timeline, tab_terrain = st.tabs([
 ])
 
 with tab_overview:
+    st.markdown('<div class="section-kicker">ALTITUD DEL PUNTO DE OBSERVACIÓN</div>', unsafe_allow_html=True)
+    altitude_rows = [{
+        "Sitio": item["sitio"],
+        "Altitud utilizada (m)": item.get("altitud_metros", 0.0),
+        "Origen": item.get("altitude_source", "Horizons a 0 m"),
+    } for item in results]
+    st.dataframe(
+        pd.DataFrame(altitude_rows),
+        width="stretch",
+        hide_index=True,
+        column_config={"Altitud utilizada (m)": st.column_config.NumberColumn(format="%.2f m")},
+    )
+    if st.session_state.get("analysis_used_dem_altitude", False):
+        st.caption("Horizons recibió la elevación de cada sitio del DEM, convertida de metros a kilómetros. Confirma que el datum y la escala vertical del GeoTIFF sean compatibles con la superficie de referencia lunar utilizada por Horizons.")
+    else:
+        st.caption("Este análisis utilizó una altura de observador de 0 m en Horizons. Puedes activar la corrección topográfica en la barra lateral después de verificar el datum y las unidades del DEM.")
+
     st.markdown('<div class="section-kicker">ANALIZADOR DE VENTANA DE MISIÓN / INTERRUPCIONES CONTINUAS</div>', unsafe_allow_html=True)
     st.subheader("Ventana operativa de estancia en superficie")
     if analysis_window_mode == "Llegada + estancia en superficie":
