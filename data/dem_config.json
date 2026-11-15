@@ -1,0 +1,17 @@
+{
+  "default_path": "",
+  "lunar_radius_m": 1737400.0,
+  "elevation_units": "m",
+  "elevation_to_m_factor": 1.0,
+  "default_window_radius_px": 100,
+  "candidate_search": {
+    "max_slope_deg": 5.0,
+    "max_roughness_m": 3.0,
+    "minimum_component_pixels": 9,
+    "minimum_spacing_m": 300.0
+  },
+  "notes": [
+    "Check the DEM metadata, coordinate reference system, elevation units and pixel resolution before interpreting slope or roughness.",
+    "A slope threshold is a user-defined screening criterion, not an HLS/NASA certified landing constraint."
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "apollo_missions": {
+    "Apollo 11": {
+      "waypoints_url": "https://trek.nasa.gov/moon/trekarcgis/rest/services/Apollo11_waypoints/MapServer/0/query?f=json&where=1%3D1&returnGeometry=true&outFields=*&outSR=104903",
+      "high_res_layer": {
+        "name": "Apollo 11 Ultra Res (26 cm)",
+        "url": "https://trek.nasa.gov/tiles/Moon/EQ/apollo11_26cm_mosaic_byte_geo_1_2_highContrast/1.0.0/default/default028mm/{z}/{y}/{x}.png",
+        "max_native_zoom": 16
+      }
+    },
+    "Apollo 12": {
+      "waypoints_url": "https://trek.nasa.gov/moon/trekarcgis/rest/services/Apollo12_waypoints/MapServer/0/query?f=json&where=1%3D1&returnGeometry=true&outFields=*&outSR=104903",
+      "high_res_layer": {
+        "name": "Apollo 12 Alta Res (60x60 km)",
+        "url": "https://trek.nasa.gov/tiles/Moon/EQ/A12_60x60km.0_3.eq/1.0.0/default/default028mm/{z}/{y}/{x}.png",
+        "max_native_zoom": 14
+      }
+    },
+    "Apollo 14": {
+      "waypoints_url": "https://trek.nasa.gov/moon/trekarcgis/rest/services/Apollo14_waypoints/MapServer/0/query?f=json&where=1%3D1&returnGeometry=true&outFields=*&outSR=104903",
+      "high_res_layer": {
+        "name": "Apollo 14 Alta Res (60x60 km)",
+        "url": "https://trek.nasa.gov/tiles/Moon/EQ/A14_60x60km.0_3.eq/1.0.0/default/default028mm/{z}/{y}/{x}.png",
+        "max_native_zoom": 14
+      }
+    },
+    "Apollo 15": {
+      "waypoints_url": "https://trek.nasa.gov/moon/trekarcgis/rest/services/Apollo15_waypoints/MapServer/0/query?f=json&where=1%3D1&returnGeometry=true&outFields=*&outSR=104903",
+      "high_res_layer": {
+        "name": "Apollo 15 Alta Res (60x60 km)",
+        "url": "https://trek.nasa.gov/tiles/Moon/EQ/A15_60x60km.0_3.eq/1.0.0/default/default028mm/{z}/{y}/{x}.png",
+        "max_native_zoom": 14
+      }
+    },
+    "Apollo 16": {
+      "waypoints_url": "https://trek.nasa.gov/moon/trekarcgis/rest/services/Apollo16_waypoints/MapServer/0/query?f=json&where=1%3D1&returnGeometry=true&outFields=*&outSR=104903",
+      "high_res_layer": {
+        "name": "Apollo 16 Alta Res (60x60 km)",
+        "url": "https://trek.nasa.gov/tiles/Moon/EQ/A16_60x60km.0_3.eq/1.0.0/default/default028mm/{z}/{y}/{x}.png",
+        "max_native_zoom": 14
+      }
+    },
+    "Apollo 17": {
+      "waypoints_url": "https://trek.nasa.gov/moon/trekarcgis2/rest/services/Apollo17_waypoints/MapServer/0/query?f=json&where=1%3D1&returnGeometry=true&outFields=*&outSR=104903",
+      "high_res_layer": {
+        "name": "Apollo 17 Alta Res (60x60 km)",
+        "url": "https://trek.nasa.gov/tiles/Moon/EQ/A17_60x60km.0_3.eq/1.0.0/default/default028mm/{z}/{y}/{x}.png",
+        "max_native_zoom": 14
+      }
+    }
+  },
+  "global_lunar_layer": {
+    "name": "NASA LRO WAC Global",
+    "url": "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/{z}/{y}/{x}.jpg",
+    "max_zoom": 20,
+    "max_native_zoom": 7
+  },
+  "notes": [
+    "Apollo reference coordinates are calculated as the mean of available mission waypoints; they are not necessarily official touchdown coordinates.",
+    "Do not treat the historical Artemis III study-region list as a current approved Artemis IV landing-site list."
+  ]
+}

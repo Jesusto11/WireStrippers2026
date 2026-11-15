@@ -1,0 +1,15 @@
+{
+  "description": "Historical Artemis III south-pole study-region names from a prior NASA evaluation cycle. These are provided as metadata only; do not infer exact coordinates or current Artemis IV selection status.",
+  "regions": [
+    "Peak near Cabeus B",
+    "Haworth",
+    "Malapert Massif",
+    "Mons Mouton Plateau",
+    "Mons Mouton",
+    "Nobile Rim 1",
+    "Nobile Rim 2",
+    "de Gerlache Rim 2",
+    "Slater Plain"
+  ],
+  "coordinate_status": "Coordinates not supplied in this catalog. Add verified coordinates and provenance before enabling these entries as selectable locations."
+}
