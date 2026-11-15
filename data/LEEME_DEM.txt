@@ -1,0 +1,5 @@
+ECLIPSE busca automáticamente el archivo:
+
+LRO_LOLA_DEM_Global_128ppd_v04.tif
+
+Colócalo en esta carpeta data/. No se incluye en el paquete porque el archivo original es de aproximadamente 2 GB. Consulta el README principal para instrucciones de Git LFS y despliegue.

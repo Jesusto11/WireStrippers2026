@@ -1,5 +1,5 @@
 {
-  "description": "Historical Artemis III south-pole study-region names from a prior NASA evaluation cycle. These are provided as metadata only; do not infer exact coordinates or current Artemis IV selection status.",
+  "description": "Nombres históricos de regiones de estudio del polo sur evaluadas en un ciclo anterior de Artemis III. Se incluyen solo como metadatos: no se deben inferir coordenadas exactas ni asumir que representan una selección vigente para Artemis IV.",
   "regions": [
     "Peak near Cabeus B",
     "Haworth",
@@ -11,5 +11,5 @@
     "de Gerlache Rim 2",
     "Slater Plain"
   ],
-  "coordinate_status": "Coordinates not supplied in this catalog. Add verified coordinates and provenance before enabling these entries as selectable locations."
+  "coordinate_status": "Este catálogo no contiene coordenadas. Añade coordenadas verificadas y su procedencia antes de habilitar estas regiones como ubicaciones seleccionables."
 }

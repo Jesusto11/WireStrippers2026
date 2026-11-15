@@ -45,7 +45,7 @@ def _maximo_intervalo_no_disponible(
     intervalos desconocidos, no como pérdida demostrada.
     """
     if timed_frame.empty or column not in timed_frame.columns:
-        return 0.0, "n/a", "n/a"
+        return 0.0, "No disponible", "No disponible"
 
     frame = timed_frame.sort_values("datetime").reset_index(drop=True).copy()
     timestamps = pd.to_datetime(frame["datetime"])
@@ -94,7 +94,7 @@ def _maximo_intervalo_no_disponible(
         best_duration, best_start, best_end = run_duration, run_start, run_end
 
     if best_start is None or best_end is None:
-        return 0.0, "n/a", "n/a"
+        return 0.0, "No disponible", "No disponible"
     return (
         float(best_duration),
         best_start.strftime("%Y-%m-%d %H:%M UT"),
@@ -149,9 +149,9 @@ def calcular_metricas_sitio(
         f"Sun {banda_solar_deg[0]:g}–{banda_solar_deg[1]:g}° (h)": sun_band_h,
         f"Sun > {umbral_exposicion_solar_deg:g}° (h)": sun_high_h,
         "Longest solar darkness (h)": longest_dark_h,
-        "Longest solar darkness interval (UT)": (f"{dark_start} → {dark_end}" if dark_start != "n/a" else "n/a"),
+        "Longest solar darkness interval (UT)": (f"{dark_start} → {dark_end}" if dark_start != "No disponible" else "No disponible"),
         "Longest Earth below margin (h)": longest_earth_gap_h,
-        "Longest Earth gap interval (UT)": (f"{earth_gap_start} → {earth_gap_end}" if earth_gap_start != "n/a" else "n/a"),
+        "Longest Earth gap interval (UT)": (f"{earth_gap_start} → {earth_gap_end}" if earth_gap_start != "No disponible" else "No disponible"),
     }
     return summary, df
 
@@ -175,10 +175,10 @@ def clasificar_condiciones_exploratorias(
     earth_pct = 100 * earth_margin_h / total_hours if total_hours > 0 else 0.0
 
     if total_sun_h <= 0:
-        return "Priority review", "No direct solar illumination was observed in the selected time window."
+        return "Revisión prioritaria", "No se observó iluminación solar directa durante la ventana seleccionada."
     if sun_pct >= min_sun_percent and earth_pct >= min_earth_margin_percent:
-        return "Favorable geometric conditions", "Meets the configured exploratory percentages for solar visibility and Earth elevation margin."
-    return "Requires review", "One or both metrics are below the configured exploratory percentages."
+        return "Condiciones geométricas favorables", "Cumple los porcentajes exploratorios configurados para visibilidad solar y margen de elevación terrestre."
+    return "Requiere revisión", "Una o ambas métricas están por debajo de los porcentajes exploratorios configurados."
 
 
 def construir_tabla_comparativa(

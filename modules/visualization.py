@@ -79,7 +79,7 @@ def construir_mapa_lunar(
     global_layer = config["global_lunar_layer"]
     folium.TileLayer(
         tiles=global_layer["url"],
-        attr="NASA / LRO WAC Global",
+        attr="NASA / mosaico global LRO WAC",
         name=global_layer["name"],
         max_zoom=global_layer.get("max_zoom", 20),
         max_native_zoom=global_layer.get("max_native_zoom", 7),
@@ -105,8 +105,8 @@ def construir_mapa_lunar(
         popup_html = (
             f"<div style='font-family:Arial;min-width:220px;color:#18202a'>"
             f"<b>{name}</b><hr style='margin:5px 0'>"
-            f"Latitude: {lat:.5f}°<br>Longitude: {lon:.5f}°<br>"
-            f"Origen: {html.escape(str(result.get('source', 'Custom / catalog')))}</div>"
+            f"Latitud: {lat:.5f}°<br>Longitud: {lon:.5f}°<br>"
+            f"Origen: {html.escape(str(result.get('source', 'Personalizado / catálogo')))}</div>"
         )
         folium.CircleMarker(
             location=[lat, lon],
@@ -145,7 +145,7 @@ def construir_mapa_lunar(
                         wp_lon = float(point["x"])
                     except (TypeError, ValueError):
                         continue
-                    waypoint_name = html.escape(str(point.get("name", "Waypoint")))
+                    waypoint_name = html.escape(str(point.get("name", "Punto de recorrido")))
                     folium.CircleMarker(
                         location=[wp_lat, wp_lon],
                         radius=2.5,
@@ -158,8 +158,8 @@ def construir_mapa_lunar(
     folium.LayerControl(collapsed=True).add_to(lunar_map)
     MousePosition(
         position="bottomleft",
-        separator=" | Lon: ",
-        prefix="Lat: ",
+        separator=" | Longitud: ",
+        prefix="Latitud: ",
         num_digits=5,
     ).add_to(lunar_map)
     return lunar_map
@@ -178,7 +178,7 @@ def crear_timeline_plotly(
         vertical_spacing=0.10,
         subplot_titles=("SOL · Elevación aparente", "TIERRA · Elevación aparente"),
     )
-    palette = ["#53D5E8", "#FF8D83", "#F4BD62", "#91A8FF", "#79D9B5"]
+    palette = ["#69C9E8", "#E98279", "#E8B45B", "#9AABF0", "#72D3B4"]
     for index, (site, frame) in enumerate(frames_by_site.items()):
         color = palette[index % len(palette)]
         if "sun_elevation_deg" in frame.columns:
@@ -222,17 +222,17 @@ def crear_timeline_plotly(
                 ), row=2, col=1,
             )
 
-    fig.add_hline(y=0, line_dash="dot", line_color="#9AA9B8", row=1, col=1)
+    fig.add_hline(y=0, line_dash="dot", line_color="#8FA7BE", row=1, col=1)
     if show_sun_band:
         fig.add_hrect(
-            y0=5, y1=20, fillcolor="#68D5C2", opacity=0.09,
+            y0=5, y1=20, fillcolor="#69C9E8", opacity=0.09,
             line_width=0, row=1, col=1,
         )
-    fig.add_hline(y=0, line_dash="dot", line_color="#9AA9B8", row=2, col=1)
-    fig.add_hline(y=earth_reference_deg, line_dash="dash", line_color="#F0B35D", row=2, col=1)
+    fig.add_hline(y=0, line_dash="dot", line_color="#8FA7BE", row=2, col=1)
+    fig.add_hline(y=earth_reference_deg, line_dash="dash", line_color="#E8B45B", row=2, col=1)
     fig.update_yaxes(title_text="Elevación (°)", row=1, col=1, gridcolor="rgba(150,170,190,.15)")
     fig.update_yaxes(title_text="Elevación (°)", row=2, col=1, gridcolor="rgba(150,170,190,.15)")
-    fig.update_xaxes(title_text="Fecha y hora UT", row=2, col=1, rangeslider_visible=True)
+    fig.update_xaxes(title_text="Fecha y hora (UT)", row=2, col=1, rangeslider_visible=True)
     fig.update_layout(
         height=650,
         hovermode="x unified",
@@ -240,7 +240,7 @@ def crear_timeline_plotly(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Manrope, sans-serif", color="#DCE7F1"),
-        legend_title_text="Site / object",
+        legend_title_text="Sitio / cuerpo celeste",
         margin=dict(l=15, r=15, t=65, b=35),
     )
     return fig
@@ -254,8 +254,8 @@ def crear_grafica_comparacion(df_summary: pd.DataFrame) -> go.Figure:
     fig.add_trace(go.Bar(
         x=df_summary["Site"],
         y=df_summary["Sun visible (%)"],
-        name="Sun above horizon (%)",
-        marker_color="#F4BD62",
+        name="Sol sobre el horizonte (%)",
+        marker_color="#E8B45B",
     ))
     earth_percent_col = next(
         (column for column in df_summary.columns if column.startswith("Earth ≥") and column.endswith("(%)")),
@@ -265,14 +265,14 @@ def crear_grafica_comparacion(df_summary: pd.DataFrame) -> go.Figure:
         fig.add_trace(go.Bar(
             x=df_summary["Site"],
             y=df_summary[earth_percent_col],
-            name=earth_percent_col,
-            marker_color="#53D5E8",
+            name=earth_percent_col.replace("Earth", "Tierra"),
+            marker_color="#69C9E8",
         ))
     fig.update_layout(
         template="plotly_dark",
-        title="Geometric Sun visibility and Earth elevation margin",
-        yaxis_title="Window availability (%)",
-        xaxis_title="Site",
+        title="Visibilidad del Sol y margen de elevación terrestre",
+        yaxis_title="Disponibilidad durante la ventana (%)",
+        xaxis_title="Sitio",
         yaxis=dict(range=[0, 100]),
         barmode="group",
         paper_bgcolor="rgba(0,0,0,0)",
@@ -290,11 +290,11 @@ def crear_superficie_3d(elevation: np.ndarray, title: str = "Modelo de elevació
     stride = max(1, int(max(z.shape) / 250))
     z = z[::stride, ::stride]
     y_grid, x_grid = np.indices(z.shape)
-    fig = go.Figure(data=[go.Surface(x=x_grid, y=y_grid, z=z, colorscale="Earth", connectgaps=False)])
+    fig = go.Figure(data=[go.Surface(x=x_grid, y=y_grid, z=z, colorscale=[[0, "#05080D"], [0.22, "#0B1D39"], [0.48, "#123A63"], [0.76, "#2F5D8A"], [1, "#C3D8E8"]], connectgaps=False)])
     fig.update_layout(
         title=title,
         template="plotly_dark",
-        scene=dict(xaxis_title="Columna de píxel", yaxis_title="Fila de píxel", zaxis_title="Elevación (unidades DEM)"),
+        scene=dict(xaxis_title="Columna del píxel", yaxis_title="Fila del píxel", zaxis_title="Elevación (unidades del DEM)"),
         paper_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=0, r=0, t=50, b=0),
         height=560,
@@ -314,7 +314,7 @@ def crear_grafica_pareto_topografica(candidates: pd.DataFrame) -> go.Figure:
     if candidates is None or candidates.empty:
         fig.update_layout(
             template="plotly_dark",
-            title="Topographic Pareto screening",
+            title="Evaluación topográfica de Pareto",
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
         )
@@ -338,8 +338,8 @@ def crear_grafica_pareto_topografica(candidates: pd.DataFrame) -> go.Figure:
     custom[:, 3] = area.to_numpy(dtype=float)
 
     for is_pareto, label, color in [
-        (False, "Dominated candidate", "#FF8D83"),
-        (True, "Non-dominated / Pareto", "#53D5E8"),
+        (False, "Candidato dominado", "#E98279"),
+        (True, "No dominado / Pareto", "#69C9E8"),
     ]:
         subset = frame[frame["Pareto"] == is_pareto]
         if subset.empty:
@@ -357,24 +357,24 @@ def crear_grafica_pareto_topografica(candidates: pd.DataFrame) -> go.Figure:
                 size=sizes,
                 color=color,
                 opacity=0.88,
-                line=dict(color="#E8F4FA", width=1),
+                line=dict(color="#C3D8E8", width=1),
             ),
             hovertemplate=(
-                "Candidate %{customdata[0]}<br>"
-                "Slope: %{x:.2f}°<br>"
-                "Roughness: %{y:.2f} m<br>"
-                "Latitude: %{customdata[1]:.5f}°<br>"
-                "Longitude: %{customdata[2]:.5f}°<br>"
-                "Patch area: %{customdata[3]:.5f} km²"
+                "Candidato %{customdata[0]}<br>"
+                "Pendiente: %{x:.2f}°<br>"
+                "Rugosidad: %{y:.2f} m<br>"
+                "Latitud: %{customdata[1]:.5f}°<br>"
+                "Longitud: %{customdata[2]:.5f}°<br>"
+                "Área del parche: %{customdata[3]:.5f} km²"
                 "<extra></extra>"
             ),
         ))
 
     fig.update_layout(
         template="plotly_dark",
-        title="Topographic trade-off / Pareto frontier",
-        xaxis_title="Local slope (°) · lower is better",
-        yaxis_title="Local roughness (m) · lower is better",
+        title="Compromiso topográfico / frontera de Pareto",
+        xaxis_title="Pendiente local (°) · menor es mejor",
+        yaxis_title="Rugosidad local (m) · menor es mejor",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(5,18,32,.45)",
         font=dict(family="Manrope, sans-serif", color="#DCE7F1"),

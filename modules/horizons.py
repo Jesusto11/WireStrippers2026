@@ -130,7 +130,7 @@ def consultar_objeto_horizons(
     response.raise_for_status()
     payload: dict[str, Any] = response.json()
     if payload.get("error"):
-        raise RuntimeError(f"JPL Horizons: {payload['error']}")
+        raise RuntimeError(f"JPL Horizons informó el siguiente error: {payload['error']}")
     text = payload.get("result")
     if not text:
         raise RuntimeError("JPL Horizons devolvió una respuesta sin tabla de resultados.")

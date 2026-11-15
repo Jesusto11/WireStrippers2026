@@ -90,7 +90,7 @@ def leer_dem_local(
     if not path.exists():
         raise FileNotFoundError(f"No se encontró el DEM: {path}")
     if radius_px < 8:
-        raise ValueError("radius_px debe ser al menos 8 para evaluar el entorno local.")
+        raise ValueError("El radio de búsqueda en píxeles debe ser de al menos 8 para evaluar el entorno local.")
 
     with rasterio.open(path) as dataset:
         x, y = _site_to_dataset_xy(dataset, lat, lon)

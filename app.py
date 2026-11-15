@@ -1,4 +1,4 @@
-"""LUNASCOUT — interfaz principal Streamlit.
+"""ECLIPSE — interfaz principal de Streamlit.
 
 Ejecutar desde la raíz del repositorio:
     streamlit run app.py
@@ -6,7 +6,6 @@ Ejecutar desde la raíz del repositorio:
 from __future__ import annotations
 
 import json
-import tempfile
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
@@ -34,7 +33,7 @@ SITES_PATH = ROOT / "data" / "sites.json"
 DEM_CONFIG_PATH = ROOT / "data" / "dem_config.json"
 
 st.set_page_config(
-    page_title="LUNASCOUT | Lunar Site Intelligence",
+    page_title="ECLIPSE | Evaluación de sitios polares lunares",
     page_icon="🌘",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -49,16 +48,16 @@ st.markdown(
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
       :root {
-        --space: #071426;
-        --panel: #0D2038;
-        --panel-2: #122B49;
-        --panel-edge: rgba(93, 190, 220, .30);
-        --cyan: #53D5E8;
-        --blue: #267CB8;
-        --amber: #F4BD62;
-        --coral: #FF8D83;
-        --text: #F2F7FC;
-        --muted: #A9BED2;
+        --space: #000000;
+        --panel: #0B1D39;
+        --panel-2: #123A63;
+        --panel-edge: rgba(47, 93, 138, .46);
+        --cyan: #69C9E8;
+        --blue: #2F5D8A;
+        --amber: #E8B45B;
+        --coral: #E98279;
+        --text: #F0F4FA;
+        --muted: #AAB9CA;
       }
       html, body, [class*="css"] { font-family: 'Manrope', sans-serif; }
       .stApp {
@@ -66,19 +65,19 @@ st.markdown(
           radial-gradient(ellipse at 50% -10%, rgba(53,154,201,.22), transparent 40%),
           radial-gradient(ellipse at 2% 30%, rgba(220,104,145,.09), transparent 26%),
           radial-gradient(ellipse at 96% 5%, rgba(244,189,98,.08), transparent 24%),
-          linear-gradient(180deg, #071426 0%, #08182B 48%, #06111F 100%);
+          linear-gradient(180deg, #000000 0%, #0B1D39 48%, #02050A 100%);
         color: var(--text);
       }
       [data-testid="stHeader"] { background: rgba(5, 16, 30, .82); }
       [data-testid="stAppViewContainer"] > .main { background: transparent; }
       [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0B1D34 0%, #081629 100%);
+        background: linear-gradient(180deg, #0B1D39 0%, #000000 100%);
         border-right: 1px solid rgba(83,213,232,.22);
         box-shadow: 10px 0 35px rgba(0,0,0,.18);
       }
       [data-testid="stSidebar"] > div:first-child { padding-top: 1.2rem; }
       [data-testid="stMetric"] {
-        background: linear-gradient(145deg, rgba(19,47,75,.96), rgba(10,29,50,.96));
+        background: linear-gradient(145deg, rgba(18,58,99,.92), rgba(7,15,27,.98));
         border: 1px solid rgba(83,213,232,.23);
         border-top: 2px solid rgba(83,213,232,.62);
         padding: 14px 16px;
@@ -92,16 +91,16 @@ st.markdown(
         position: relative; overflow: hidden;
         padding: 25px 29px 22px;
         border: 1px solid rgba(83,213,232,.38);
-        border-top: 3px solid #348DBB;
+        border-top: 3px solid #2F5D8A;
         border-radius: 17px;
         background:
-          linear-gradient(110deg, rgba(10,29,52,.98) 0%, rgba(17,51,79,.96) 55%, rgba(18,39,69,.96) 100%);
+          linear-gradient(110deg, rgba(5,8,13,.99) 0%, rgba(11,29,57,.98) 48%, rgba(18,58,99,.96) 100%);
         box-shadow: 0 18px 55px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.08);
         margin-bottom: 18px;
       }
       .hero:before {
         content: ''; position: absolute; inset: 0 0 auto 0; height: 5px;
-        background: repeating-linear-gradient(90deg, #3DB7D2 0 46px, transparent 46px 54px, #F4BD62 54px 61px, transparent 61px 78px);
+        background: repeating-linear-gradient(90deg, #3DB7D2 0 46px, transparent 46px 54px, #E8B45B 54px 61px, transparent 61px 78px);
         opacity: .8;
       }
       .hero:after {
@@ -118,13 +117,13 @@ st.markdown(
       .hero-title { color: #F5F9FC; font: 800 clamp(30px, 3.8vw, 47px) 'Barlow Condensed', sans-serif; letter-spacing: .045em; margin: 4px 0 2px; text-shadow: 0 3px 18px rgba(83,213,232,.12); }
       .hero-sub { color: #B7C9D9; font-size: 13px; max-width: 820px; line-height: 1.65; }
       .cockpit-readouts { display:flex; gap:9px; align-items:stretch; }
-      .readout { min-width:100px; padding:10px 12px; border:1px solid rgba(83,213,232,.24); border-radius:9px; background:rgba(4,17,32,.47); box-shadow:inset 0 0 18px rgba(83,213,232,.035); }
+      .readout { min-width:100px; padding:10px 12px; border:1px solid rgba(83,213,232,.24); border-radius:9px; background:rgba(3,6,11,.72); box-shadow:inset 0 0 18px rgba(83,213,232,.035); }
       .readout-label { color:#82A9C3; font:500 9px 'DM Mono',monospace; letter-spacing:.12em; }
-      .readout-value { color:#F4BD62; font:700 18px 'Barlow Condensed',sans-serif; letter-spacing:.08em; margin-top:3px; }
+      .readout-value { color:#E8B45B; font:700 18px 'Barlow Condensed',sans-serif; letter-spacing:.08em; margin-top:3px; }
       .readout-small { color:#A7BECE; font:400 8px 'DM Mono',monospace; margin-top:2px; }
       .section-kicker { color: #65D5E5; font: 500 10px 'DM Mono', monospace; letter-spacing: .18em; margin: 3px 0 5px; }
       .panel {
-        background: linear-gradient(145deg, rgba(15,37,61,.90), rgba(9,26,46,.92));
+        background: linear-gradient(145deg, rgba(18,58,99,.48), rgba(5,8,13,.94));
         border: 1px solid rgba(83,213,232,.22); border-left: 3px solid rgba(83,213,232,.58);
         padding: 17px 19px; border-radius: 12px; box-shadow:inset 0 1px rgba(255,255,255,.035),0 10px 25px rgba(0,0,0,.12);
       }
@@ -132,21 +131,21 @@ st.markdown(
       .tag { display: inline-block; padding: 4px 9px; border: 1px solid rgba(83,213,232,.32); color: #83E5F0; background: rgba(43,159,192,.10); border-radius: 4px; font: 500 9px 'DM Mono', monospace; letter-spacing: .10em; }
       .mono { font-family: 'DM Mono', monospace; }
       div.stButton > button[kind="primary"], div.stFormSubmitButton > button {
-        background: linear-gradient(100deg,#49C8DE 0%,#378FC6 100%); color:#071626;
+        background: linear-gradient(100deg,#49C8DE 0%,#378FC6 100%); color:#05080D;
         border:1px solid rgba(160,238,247,.4); font-weight:800; letter-spacing:.08em;
         border-radius:7px; min-height:42px; box-shadow:0 5px 15px rgba(39,145,188,.18);
       }
-      div.stButton > button { border:1px solid rgba(83,213,232,.24); border-radius:7px; background:rgba(16,44,70,.76); color:#DDEAF4; }
-      div.stButton > button:hover, div.stFormSubmitButton > button:hover { border-color:#F4BD62; color:#FFF; }
+      div.stButton > button { border:1px solid rgba(83,213,232,.24); border-radius:7px; background:rgba(18,58,99,.42); color:#DDEAF4; }
+      div.stButton > button:hover, div.stFormSubmitButton > button:hover { border-color:#E8B45B; color:#FFF; }
       div[data-testid="stTabs"] [role="tablist"] { gap:7px; border-bottom:1px solid rgba(83,213,232,.2); }
-      div[data-testid="stTabs"] button[role="tab"] { background:rgba(11,31,52,.72); border:1px solid rgba(83,213,232,.14); border-bottom:0; border-radius:8px 8px 0 0; color:#9DB7CB; padding:9px 15px; }
-      div[data-testid="stTabs"] button[aria-selected="true"] { background:linear-gradient(180deg,rgba(38,108,145,.34),rgba(12,36,59,.95)); color:#75E0EC; border-color:rgba(83,213,232,.42); box-shadow:inset 0 2px #53D5E8; }
+      div[data-testid="stTabs"] button[role="tab"] { background:rgba(5,8,13,.82); border:1px solid rgba(83,213,232,.14); border-bottom:0; border-radius:8px 8px 0 0; color:#9DB7CB; padding:9px 15px; }
+      div[data-testid="stTabs"] button[aria-selected="true"] { background:linear-gradient(180deg,rgba(38,108,145,.34),rgba(11,29,57,.98)); color:#75E0EC; border-color:rgba(83,213,232,.42); box-shadow:inset 0 2px #69C9E8; }
       [data-testid="stDataFrame"], [data-testid="stPlotlyChart"], [data-testid="stFoliumChart"] { border:1px solid rgba(83,213,232,.18); border-radius:10px; overflow:hidden; background:rgba(8,24,42,.42); }
       [data-testid="stForm"] { border:1px solid rgba(83,213,232,.18); border-radius:11px; background:rgba(6,22,39,.35); padding:12px; }
       [data-testid="stExpander"] { border:1px solid rgba(83,213,232,.18); border-radius:9px; background:rgba(10,29,49,.42); }
-      [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input, [data-testid="stDateInput"] input, [data-testid="stTimeInput"] input { background:#0B2036; color:#EAF5FC; border-color:rgba(83,213,232,.25); }
-      [data-testid="stSelectbox"] [data-baseweb="select"] > div, [data-testid="stMultiSelect"] [data-baseweb="select"] > div { background:#0B2036; border-color:rgba(83,213,232,.25); }
-      [data-testid="stSlider"] [data-testid="stThumbValue"] { color:#F4BD62; }
+      [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input, [data-testid="stDateInput"] input, [data-testid="stTimeInput"] input { background:#0B1D39; color:#EAF5FC; border-color:rgba(83,213,232,.25); }
+      [data-testid="stSelectbox"] [data-baseweb="select"] > div, [data-testid="stMultiSelect"] [data-baseweb="select"] > div { background:#0B1D39; border-color:rgba(83,213,232,.25); }
+      [data-testid="stSlider"] [data-testid="stThumbValue"] { color:#E8B45B; }
       hr { border-color:rgba(83,213,232,.18); }
       .instrument-caption { color:#7FA2BB; font:500 9px 'DM Mono',monospace; letter-spacing:.13em; text-transform:uppercase; }
       footer { visibility: hidden; }
@@ -186,9 +185,9 @@ def _build_selected_sites(missions: list[str], bank: dict, custom: dict | None) 
         if coords.empty:
             continue
         sites.append({
-            "nombre": f"{mission} · waypoint centroid",
+            "nombre": f"{mission} · centro de los puntos de recorrido",
             "mision": mission,
-            "source": "Mean of NASA Moon Trek waypoints",
+            "source": "Promedio de puntos de recorrido de NASA Moon Trek",
             "lat": float(coords["y"].mean()),
             "lon": float(coords["x"].mean()),
         })
@@ -196,7 +195,7 @@ def _build_selected_sites(missions: list[str], bank: dict, custom: dict | None) 
         sites.append({
             "nombre": custom["name"],
             "mision": None,
-            "source": "Custom coordinates",
+            "source": "Coordenadas personalizadas",
             "lat": float(custom["lat"]),
             "lon": float(custom["lon"]),
         })
@@ -204,7 +203,7 @@ def _build_selected_sites(missions: list[str], bank: dict, custom: dict | None) 
 
 
 def _format_value(value: float, suffix: str = "°") -> str:
-    return "n/a" if pd.isna(value) else f"{float(value):.2f}{suffix}"
+    return "N/D" if pd.isna(value) else f"{float(value):.2f}{suffix}"
 
 
 def _run_site_analysis(
@@ -241,11 +240,11 @@ def _run_site_analysis(
 def _render_site_inspector(frames_by_site: dict[str, pd.DataFrame]) -> None:
     if not frames_by_site:
         return
-    st.markdown('<div class="section-kicker">TIME CURSOR / SAMPLE INSPECTOR</div>', unsafe_allow_html=True)
-    selected_site = st.selectbox("Site to inspect", list(frames_by_site), key="time_inspector_site")
+    st.markdown('<div class="section-kicker">CURSOR TEMPORAL / INSPECCIÓN DE MUESTRAS</div>', unsafe_allow_html=True)
+    selected_site = st.selectbox("Sitio para inspeccionar", list(frames_by_site), key="time_inspector_site")
     frame = frames_by_site[selected_site].dropna(subset=["datetime"]).copy()
     if len(frame) < 1:
-        st.info("No time samples are available for inspection.")
+        st.info("No hay muestras temporales disponibles para consultar.")
         return
     frame["datetime"] = pd.to_datetime(frame["datetime"])
     timestamps = frame["datetime"].sort_values()
@@ -267,19 +266,11 @@ def _render_site_inspector(frames_by_site: dict[str, pd.DataFrame]) -> None:
     idx = (frame["datetime"] - pd.Timestamp(selected_time)).abs().idxmin()
     sample = frame.loc[idx]
     metrics = st.columns(4)
-    metrics[0].metric("Sun azimuth", _format_value(sample.get("sun_azimuth_deg", np.nan)))
-    metrics[1].metric("Sun elevation", _format_value(sample.get("sun_elevation_deg", np.nan)))
-    metrics[2].metric("Earth azimuth", _format_value(sample.get("earth_azimuth_deg", np.nan)))
-    metrics[3].metric("Earth elevation", _format_value(sample.get("earth_elevation_deg", np.nan)))
-    st.caption(f"Nearest sample: {sample['datetime']:%Y-%m-%d %H:%M:%S} UT")
-
-
-def _write_upload_to_temp(uploaded_file) -> str:
-    suffix = Path(uploaded_file.name).suffix or ".tif"
-    temp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-    temp.write(uploaded_file.getvalue())
-    temp.close()
-    return temp.name
+    metrics[0].metric("Azimut del Sol", _format_value(sample.get("sun_azimuth_deg", np.nan)))
+    metrics[1].metric("Elevación del Sol", _format_value(sample.get("sun_elevation_deg", np.nan)))
+    metrics[2].metric("Azimut de la Tierra", _format_value(sample.get("earth_azimuth_deg", np.nan)))
+    metrics[3].metric("Elevación de la Tierra", _format_value(sample.get("earth_elevation_deg", np.nan)))
+    st.caption(f"Muestra más cercana: {sample['datetime']:%Y-%m-%d %H:%M:%S} UT")
 
 
 # -----------------------------------------------------------------------------
@@ -289,21 +280,21 @@ st.markdown(
     """
     <div class="hero">
       <div class="cockpit-status">
-        <span><i class="status-led"></i>FLIGHT SYSTEMS READY</span>
-        <span><i class="status-led amber"></i>EPHEMERIS ON DEMAND</span>
-        <span>CONTROL DECK / LUNAR SURFACE OPERATIONS</span>
+        <span><i class="status-led"></i>SISTEMAS LISTOS</span>
+        <span><i class="status-led amber"></i>EFEMÉRIDES A SOLICITUD</span>
+        <span>CENTRO DE CONTROL / OPERACIONES EN LA SUPERFICIE LUNAR</span>
       </div>
       <div class="hero-grid">
         <div>
-          <div class="hero-kicker">LUNAR LANDING SITE INTELLIGENCE / MISSION SUPPORT</div>
-          <div class="hero-title">LUNASCOUT <span style="color:#53D5E8">/</span> LUNAR OPERATIONS</div>
-          <div class="hero-sub">A cockpit-inspired mission console to compare lunar sites, inspect Sun–Earth geometry and screen local terrain using NASA/JPL data.</div>
-          <div style="margin-top:14px"><span class="tag">JPL HORIZONS</span>&nbsp; <span class="tag">LRO / MOON TREK</span>&nbsp; <span class="tag">MISSION TIMELINE</span>&nbsp; <span class="tag">TERRAIN LAB</span></div>
+          <div class="hero-kicker">EVALUADOR DE COMUNICACIONES, ATERRIZAJE E ILUMINACIÓN PARA LA EXPLORACIÓN DE SITIOS POLARES</div>
+          <div class="hero-title">ECLIPSE <span style="color:#69C9E8">/</span> EXPLORACIÓN POLAR</div>
+          <div class="hero-sub">Evaluador de comunicaciones, aterrizaje e iluminación para la exploración de sitios polares. Compara ubicaciones lunares, analiza la geometría entre el Sol y la Tierra y examina el terreno con datos de NASA y JPL.</div>
+          <div style="margin-top:14px"><span class="tag">JPL HORIZONS</span>&nbsp; <span class="tag">LRO / MOON TREK</span>&nbsp; <span class="tag">SERIES TEMPORALES</span>&nbsp; <span class="tag">EVALUACIÓN DEL TERRENO</span></div>
         </div>
         <div class="cockpit-readouts">
-          <div class="readout"><div class="readout-label">DATA BUS</div><div class="readout-value">NOMINAL</div><div class="readout-small">NASA / JPL</div></div>
-          <div class="readout"><div class="readout-label">SURFACE MODE</div><div class="readout-value" style="color:#65D5E5">ANALYSIS</div><div class="readout-small">LUNAR OPS</div></div>
-          <div class="readout"><div class="readout-label">SYSTEM</div><div class="readout-value" style="color:#7FE0B5">READY</div><div class="readout-small">STREAMLIT</div></div>
+          <div class="readout"><div class="readout-label">CONEXIÓN DE DATOS</div><div class="readout-value">NOMINAL</div><div class="readout-small">NASA / JPL</div></div>
+          <div class="readout"><div class="readout-label">MODO DE SUPERFICIE</div><div class="readout-value" style="color:#69C9E8">ANÁLISIS</div><div class="readout-small">OPERACIONES EN LA LUNA</div></div>
+          <div class="readout"><div class="readout-label">SISTEMA</div><div class="readout-value" style="color:#7FE0B5">LISTO</div><div class="readout-small">STREAMLIT</div></div>
         </div>
       </div>
     </div>
@@ -314,85 +305,95 @@ st.markdown(
 config = _load_json(SITES_PATH)
 mission_options = list(config["apollo_missions"].keys())
 interval_options = {
-    "5 minutes": ("5 min", 5),
-    "15 minutes": ("15 min", 15),
-    "30 minutes": ("30 min", 30),
-    "1 hour": ("60 min", 60),
-    "2 hours": ("120 min", 120),
-    "6 hours": ("360 min", 360),
+    "5 minutos": ("5 min", 5),
+    "15 minutos": ("15 min", 15),
+    "30 minutos": ("30 min", 30),
+    "1 hora": ("60 min", 60),
+    "2 horas": ("120 min", 120),
+    "6 horas": ("360 min", 360),
 }
 
 # -----------------------------------------------------------------------------
 # SIDEBAR / CONFIGURACIÓN
 # -----------------------------------------------------------------------------
-st.sidebar.markdown("<div class='section-kicker'>MISSION CONFIGURATION</div>", unsafe_allow_html=True)
-st.sidebar.markdown("## Mission parameters")
+st.sidebar.markdown("<div class='section-kicker'>CONFIGURACIÓN DE MISIÓN</div>", unsafe_allow_html=True)
+st.sidebar.markdown("## Parámetros de misión")
 with st.sidebar.form("mission_setup_form"):
     selected_missions = st.multiselect(
-        "Apollo reference sites",
+        "Sitios de referencia Apollo",
         options=mission_options,
         default=["Apollo 11"],
         max_selections=5,
-        help="La coordenada de referencia se calcula como promedio de waypoints disponibles; no necesariamente es el touchdown oficial.",
+        help="La coordenada de referencia se calcula como promedio de los puntos de recorrido disponibles; no necesariamente coincide con el punto oficial de aterrizaje.",
     )
-    add_custom = st.checkbox("Add custom coordinates", value=False)
-    custom_name = "Custom site"
+    add_custom = st.checkbox("Agregar coordenadas personalizadas", value=False)
+    custom_name = "Sitio personalizado"
     custom_lat = -89.0
     custom_lon = 0.0
     if add_custom:
-        custom_name = st.text_input("Site label", value="South Pole candidate")
-        custom_lat = st.number_input("Latitude (°)", min_value=-90.0, max_value=90.0, value=-89.0, step=0.01, format="%.5f")
-        custom_lon = st.number_input("Longitude (°)", min_value=-180.0, max_value=180.0, value=0.0, step=0.01, format="%.5f")
+        custom_name = st.text_input("Nombre del sitio", value="Candidato del polo sur")
+        custom_lat = st.number_input("Latitud (°)", min_value=-90.0, max_value=90.0, value=-89.0, step=0.01, format="%.5f")
+        custom_lon = st.number_input("Longitud (°)", min_value=-180.0, max_value=180.0, value=0.0, step=0.01, format="%.5f")
 
     st.markdown("---")
-    st.caption("MISSION WINDOW / UTC")
+    st.caption("VENTANA DE MISIÓN / UTC")
     today = date.today()
     window_mode = st.radio(
-        "Define mission window",
-        ["Arrival + surface stay", "Custom start / end"],
+        "Definir ventana de misión",
+        ["Llegada + estancia en superficie", "Inicio / fin personalizados"],
         horizontal=False,
-        help="Arrival mode computes the end of the analysis from the planned surface-stay duration.",
+        help="El modo de llegada calcula el final del análisis a partir de la duración prevista de la estancia en superficie.",
     )
-    start_date = st.date_input("Landing / start date", value=today)
-    start_time = st.time_input("Landing / start time (UT)", value=time(0, 0))
-    if window_mode == "Arrival + surface stay":
+    start_date = st.date_input("Fecha de llegada / inicio", value=today)
+    start_time = st.time_input("Hora de llegada / inicio (UT)", value=time(0, 0))
+    if window_mode == "Llegada + estancia en superficie":
         stay_hours = st.number_input(
-            "Planned surface stay (hours)", min_value=1.0, max_value=720.0,
+            "Duración prevista en superficie (horas)", min_value=1.0, max_value=720.0,
             value=144.0, step=6.0,
-            help="For example, 144 hours corresponds to a six-day surface stay.",
+            help="Por ejemplo, 144 horas equivalen a seis días de estancia en la superficie.",
         )
-        st.caption(f"Calculated end: {(datetime.combine(start_date, start_time) + timedelta(hours=float(stay_hours))):%Y-%m-%d %H:%M} UT")
+        st.caption(f"Fin calculado:  {(datetime.combine(start_date, start_time) + timedelta(hours=float(stay_hours))):%Y-%m-%d %H:%M} UT")
         end_date = None
         end_time = None
     else:
-        st.caption("Set an explicit end timestamp for a custom analysis range.")
-        end_date = st.date_input("End date", value=today + timedelta(days=1))
-        end_time = st.time_input("End time (UT)", value=time(0, 0))
+        st.caption("Define una fecha y hora final para un intervalo de análisis personalizado.")
+        end_date = st.date_input("Fecha de fin", value=today + timedelta(days=1))
+        end_time = st.time_input("Hora de fin (UT)", value=time(0, 0))
         stay_hours = None
-    interval_label = st.selectbox("Ephemeris sampling interval", list(interval_options), index=3)
-    margin_earth = st.slider("Earth elevation reference (°)", min_value=0, max_value=30, value=10,
-                             help="Exploratory angular margin. It does not certify an RF link.")
-    min_sun_percent = st.slider("Minimum Sun-visible window for screening (%)", 0, 100, 50, 5)
-    min_earth_percent = st.slider("Minimum Earth-margin window for screening (%)", 0, 100, 50, 5)
-    run_button = st.form_submit_button("RUN MISSION ANALYSIS", type="primary", width="stretch")
+    interval_label = st.selectbox("Intervalo de muestreo de efemérides", list(interval_options), index=3)
+    margin_earth = st.slider("Margen de elevación terrestre (°)", min_value=0, max_value=30, value=10,
+                             help="Margen angular exploratorio; no certifica un enlace de radiofrecuencia.")
+    min_sun_percent = st.slider("Disponibilidad solar mínima para el cribado (%)", 0, 100, 50, 5)
+    min_earth_percent = st.slider("Disponibilidad terrestre mínima para el cribado (%)", 0, 100, 50, 5)
+    run_button = st.form_submit_button("EJECUTAR ANÁLISIS DE MISIÓN", type="primary", width="stretch")
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("<div class='section-kicker'>TERRAIN DATA</div>", unsafe_allow_html=True)
-dem_upload = st.sidebar.file_uploader("Upload lunar DEM (.tif)", type=["tif", "tiff"])
+st.sidebar.markdown("<div class='section-kicker'>DATOS TOPOGRÁFICOS</div>", unsafe_allow_html=True)
 dem_config = _load_json(DEM_CONFIG_PATH)
-dem_local_path = st.sidebar.text_input("Or DEM path in repository", value=dem_config.get("default_path", ""))
-st.sidebar.caption("DEM is optional. Verify the CRS, resolution and units before interpreting slope or roughness.")
-with st.sidebar.expander("Artemis south-pole study-region metadata"):
+dem_relative_path = Path(dem_config.get("default_path", "data/LRO_LOLA_DEM_Global_128ppd_v04.tif"))
+dem_local_path = dem_relative_path if dem_relative_path.is_absolute() else ROOT / dem_relative_path
+dem_local_path = dem_local_path.resolve()
+dem_source_available = dem_local_path.is_file()
+with st.sidebar.expander("Modelo digital de elevación lunar", expanded=False):
+    st.caption("ECLIPSE busca automáticamente el DEM configurado en la carpeta data/. No necesitas cargarlo desde la interfaz.")
+    st.code(str(Path("data") / dem_local_path.name).replace("\\", "/"), language="text")
+    if dem_source_available:
+        size_gb = dem_local_path.stat().st_size / (1024 ** 3)
+        st.success(f"DEM detectado · {size_gb:.2f} GiB")
+    else:
+        st.warning("DEM no encontrado. Coloca el archivo LRO_LOLA_DEM_Global_128ppd_v04.tif dentro de data/.")
+st.sidebar.caption("Se leen recortes locales del GeoTIFF para evitar cargar el modelo global completo en memoria. Verifica el sistema de referencia, la resolución y las unidades antes de interpretar la pendiente o la rugosidad.")
+with st.sidebar.expander("Regiones históricas de estudio del polo sur (Artemis)"):
     artemis_metadata = _load_json(ROOT / "data" / "artemis_study_regions.json")
     st.caption(artemis_metadata["description"])
     for region_name in artemis_metadata["regions"]:
         st.write(f"• {region_name}")
-    st.caption("These historical regions are not selectable coordinates. Add verified coordinates and provenance before evaluating them.")
+    st.caption("Estas regiones históricas no son coordenadas seleccionables. Añade coordenadas verificadas y su procedencia antes de evaluarlas.")
 st.sidebar.markdown("---")
-st.sidebar.caption("LUNASCOUT prototype · Results are exploratory decision-support outputs, not landing certification.")
+st.sidebar.caption("ECLIPSE · Prototipo de apoyo a decisiones. Los resultados son exploratorios y no constituyen una certificación de aterrizaje.")
 
 start_ut = datetime.combine(start_date, start_time)
-if window_mode == "Arrival + surface stay":
+if window_mode == "Llegada + estancia en superficie":
     end_ut = start_ut + timedelta(hours=float(stay_hours))
 else:
     end_ut = datetime.combine(end_date, end_time)
@@ -403,24 +404,24 @@ if run_button:
     st.session_state.pop("analysis_summary", None)
     st.session_state.pop("analysis_frames", None)
     if end_ut <= start_ut:
-        st.sidebar.error("The end date/time must be later than the start date/time.")
+        st.sidebar.error("La fecha y hora de fin deben ser posteriores a las de inicio.")
     elif not selected_missions and not add_custom:
-        st.sidebar.error("Select at least one Apollo site or add custom coordinates.")
+        st.sidebar.error("Selecciona al menos un sitio Apollo o agrega coordenadas personalizadas.")
     else:
-        with st.spinner("Loading Apollo waypoint reference data…"):
+        with st.spinner("Cargando los puntos de referencia Apollo…"):
             waypoints = cargar_waypoints_apollo(tuple(selected_missions))
-        custom = ({"name": custom_name.strip() or "Custom site", "lat": custom_lat, "lon": custom_lon} if add_custom else None)
+        custom = ({"name": custom_name.strip() or "Sitio personalizado", "lat": custom_lat, "lon": custom_lon} if add_custom else None)
         sites = _build_selected_sites(selected_missions, waypoints, custom)
         if len(sites) > 5:
-            st.sidebar.error("A maximum of five sites can be analyzed at once.")
+            st.sidebar.error("Se pueden analizar como máximo cinco sitios a la vez.")
         elif not sites:
-            st.sidebar.error("Coordinates could not be resolved for the selected sites.")
+            st.sidebar.error("No fue posible obtener las coordenadas de los sitios seleccionados.")
         else:
             estimated = estimar_numero_muestras(start_ut, end_ut, interval_minutes)
             if estimated > 2500:
-                st.sidebar.warning(f"About {estimated:,} samples per object and site are estimated. Consider a longer sampling interval.")
+                st.sidebar.warning(f"Se estiman aproximadamente {estimated:,} muestras por objeto y sitio. Considera utilizar un intervalo de muestreo mayor.")
             if estimated > 5000:
-                st.sidebar.error("This window would generate too many samples for this version. Increase the sampling interval.")
+                st.sidebar.error("Esta ventana generaría demasiadas muestras para esta versión. Aumenta el intervalo de muestreo.")
             else:
                 outputs, failures = _run_site_analysis(sites, start_ut, end_ut, step_size, interval_minutes)
                 if outputs:
@@ -448,9 +449,9 @@ if run_button:
                     st.session_state["analysis_failures"] = failures
                     st.session_state.pop("terrain_output", None)
                     st.session_state.pop("candidate_output", None)
-                    st.sidebar.success(f"Analysis completed: {len(outputs)} site(s).")
+                    st.sidebar.success(f"Análisis completado: {len(outputs)} sitio(s).")
                 else:
-                    st.sidebar.error("No results were returned. Check connectivity and Horizons parameters.")
+                    st.sidebar.error("No se obtuvieron resultados. Comprueba la conexión y los parámetros de Horizons.")
                 for name, message in failures:
                     st.warning(f"{name}: {message}")
 
@@ -462,10 +463,10 @@ if "analysis_results" not in st.session_state:
     st.markdown(
         """
         <div class="panel">
-          <div class="section-kicker">READY FOR ANALYSIS</div>
-          <h3 style="margin:5px 0 8px;color:#EAF5F6">Configure a lunar mission scenario</h3>
-          <p class="soft-note">Select Apollo reference locations or enter custom lunar coordinates, define a common UT time window and choose the ephemeris sampling interval. LUNASCOUT will query the apparent azimuth and elevation of the Sun and Earth for every selected site.</p>
-          <p class="soft-note"><b>Suggested first test:</b> Apollo 11 · 24-hour window · 1-hour sampling. Then compare two or more sites and reduce the sampling interval to 15 minutes.</p>
+          <div class="section-kicker">LISTO PARA EL ANÁLISIS</div>
+          <h3 style="margin:5px 0 8px;color:#EAF5F6">Configura un escenario de misión lunar</h3>
+          <p class="soft-note">Selecciona ubicaciones de referencia Apollo o introduce coordenadas lunares personalizadas. Define una ventana temporal común en UT y el intervalo de muestreo. ECLIPSE consultará el azimut y la elevación aparentes del Sol y la Tierra para cada sitio.</p>
+          <p class="soft-note"><b>Primera prueba sugerida:</b> Apollo 11 · ventana de 24 horas · muestreo de 1 hora. Después, compara dos o más sitios y reduce el intervalo de muestreo a 15 minutos.</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -478,14 +479,14 @@ frames_by_site = st.session_state["analysis_frames"]
 waypoint_bank = st.session_state.get("analysis_waypoints", {})
 analysis_start = st.session_state["analysis_start"]
 analysis_end = st.session_state["analysis_end"]
-analysis_window_mode = st.session_state.get("analysis_window_mode", "Custom start / end")
+analysis_window_mode = st.session_state.get("analysis_window_mode", "Inicio / fin personalizados")
 analysis_step = st.session_state["analysis_step"]
 earth_margin = st.session_state["analysis_earth_margin"]
 
 st.markdown(
-    f"<div class='panel' style='margin-bottom:14px'><span class='tag'>ANALYSIS COMPLETE</span> &nbsp; "
+    f"<div class='panel' style='margin-bottom:14px'><span class='tag'>ANÁLISIS COMPLETADO</span> &nbsp; "
     f"<span class='mono' style='color:#B5CAD8'>{analysis_start:%Y-%m-%d %H:%M} → {analysis_end:%Y-%m-%d %H:%M} UT</span>"
-    f"<br><span class='soft-note'>Sites: {len(results)} &nbsp;·&nbsp; Sampling: {analysis_step} &nbsp;·&nbsp; Earth reference: {earth_margin}°</span></div>",
+    f"<br><span class='soft-note'>Sitios: {len(results)} &nbsp;·&nbsp; Muestreo: {analysis_step} &nbsp;·&nbsp; Margen terrestre: {earth_margin}°</span></div>",
     unsafe_allow_html=True,
 )
 
@@ -497,97 +498,116 @@ mean_earth = float(np.nanmean([
     row.get(f"Earth ≥ {float(earth_margin):g}° (h)", np.nan) for row in summary.to_dict("records")
 ])) if number_sites else np.nan
 kpis = st.columns(4)
-kpis[0].metric("SITES ANALYZED", number_sites)
-kpis[1].metric("EPHEMERIS SAMPLES", f"{total_samples:,}")
-kpis[2].metric("MEAN SUN VISIBILITY", "n/a" if pd.isna(mean_sun) else f"{mean_sun:.1f}%")
-kpis[3].metric("MEAN EARTH ≥ REF.", "n/a" if pd.isna(mean_earth) else f"{mean_earth:.2f} h")
+kpis[0].metric("SITIOS ANALIZADOS", number_sites)
+kpis[1].metric("MUESTRAS DE EFEMÉRIDES", f"{total_samples:,}")
+kpis[2].metric("VISIBILIDAD SOLAR MEDIA", "N/D" if pd.isna(mean_sun) else f"{mean_sun:.1f}%")
+kpis[3].metric("TIERRA SOBRE EL MARGEN (MEDIA)", "N/D" if pd.isna(mean_earth) else f"{mean_earth:.2f} h")
 
 # Main navigation tabs
 tab_overview, tab_map, tab_timeline, tab_terrain = st.tabs([
-    "◈  Mission deck",
-    "⌖  Lunar radar",
-    "◷  Flight timeline",
-    "△  Terrain systems",
+    "◈  Resumen de misión",
+    "⌖  Mapa lunar",
+    "◷  Línea de tiempo",
+    "△  Terreno",
 ])
 
 with tab_overview:
-    st.markdown('<div class="section-kicker">MISSION WINDOW ANALYZER / CONTINUOUS OUTAGE SCREENING</div>', unsafe_allow_html=True)
-    st.subheader("Surface-stay operational window")
-    if analysis_window_mode == "Arrival + surface stay":
-        st.caption("The selected arrival timestamp and planned surface-stay duration define the complete mission window. Outage durations are approximated from the selected Horizons sampling interval.")
+    st.markdown('<div class="section-kicker">ANALIZADOR DE VENTANA DE MISIÓN / INTERRUPCIONES CONTINUAS</div>', unsafe_allow_html=True)
+    st.subheader("Ventana operativa de estancia en superficie")
+    if analysis_window_mode == "Llegada + estancia en superficie":
+        st.caption("La fecha de llegada y la duración prevista en superficie definen toda la ventana de misión. Las duraciones de interrupción se estiman a partir del intervalo de muestreo de Horizons.")
     else:
-        st.caption("The selected custom start/end range defines the analysis window. Outage durations are approximated from the selected Horizons sampling interval.")
-    window_site = st.selectbox("Site for detailed window readout", list(frames_by_site), key="mission_window_site")
+        st.caption("El intervalo personalizado de inicio y fin define la ventana de análisis. Las duraciones de interrupción se estiman a partir del intervalo de muestreo de Horizons.")
+    window_site = st.selectbox("Sitio para consultar el detalle de la ventana", list(frames_by_site), key="mission_window_site")
     window_row = summary.loc[summary["Site"] == window_site].iloc[0]
     earth_gap_col = "Longest Earth below margin (h)"
     sun_gap_col = "Longest solar darkness (h)"
     stay_hours_display = (analysis_end - analysis_start).total_seconds() / 3600.0
     win_metrics = st.columns(4)
-    window_metric_label = "PLANNED SURFACE STAY" if analysis_window_mode == "Arrival + surface stay" else "ANALYSIS WINDOW"
+    window_metric_label = "ESTANCIA PREVISTA EN SUPERFICIE" if analysis_window_mode == "Llegada + estancia en superficie" else "VENTANA DE ANÁLISIS"
     win_metrics[0].metric(window_metric_label, f"{stay_hours_display:.1f} h")
-    win_metrics[1].metric("SUN ABOVE HORIZON", f"{window_row.get('Sun geometrically visible (h)', np.nan):.1f} h")
-    win_metrics[2].metric("LONGEST SOLAR DARKNESS", f"{window_row.get(sun_gap_col, np.nan):.2f} h")
-    win_metrics[3].metric("LONGEST EARTH-MARGIN GAP", f"{window_row.get(earth_gap_col, np.nan):.2f} h")
-    sun_gap_text = window_row.get("Longest solar darkness interval (UT)", "n/a")
-    earth_gap_text = window_row.get("Longest Earth gap interval (UT)", "n/a")
+    win_metrics[1].metric("SOL SOBRE EL HORIZONTE", f"{window_row.get('Sun geometrically visible (h)', np.nan):.1f} h")
+    win_metrics[2].metric("MAYOR PERIODO SIN SOL", f"{window_row.get(sun_gap_col, np.nan):.2f} h")
+    win_metrics[3].metric("MAYOR PERIODO BAJO EL MARGEN TERRESTRE", f"{window_row.get(earth_gap_col, np.nan):.2f} h")
+    sun_gap_text = window_row.get("Longest solar darkness interval (UT)", "N/D")
+    earth_gap_text = window_row.get("Longest Earth gap interval (UT)", "N/D")
     st.markdown(
-        f"<div class='panel'><div class='instrument-caption'>OPERATIONAL GAP LOG / {window_site}</div>"
-        f"<div class='soft-note' style='margin-top:7px'><b style='color:#F4BD62'>Solar darkness:</b> {sun_gap_text} &nbsp; · &nbsp; "
-        f"<b style='color:#65D5E5'>Earth below {earth_margin:g}°:</b> {earth_gap_text}</div></div>",
+        f"<div class='panel'><div class='instrument-caption'>REGISTRO DE INTERRUPCIONES OPERATIVAS / {window_site}</div>"
+        f"<div class='soft-note' style='margin-top:7px'><b style='color:#E8B45B'>Sin iluminación solar:</b> {sun_gap_text} &nbsp; · &nbsp; "
+        f"<b style='color:#65D5E5'>Tierra por debajo de {earth_margin:g}°:</b> {earth_gap_text}</div></div>",
         unsafe_allow_html=True,
     )
 
     left, right = st.columns([1.25, 0.75], gap="large")
     with left:
-        st.markdown('<div class="section-kicker">SITE COMPARISON</div>', unsafe_allow_html=True)
-        st.subheader("Cross-site environmental comparison")
+        st.markdown('<div class="section-kicker">COMPARACIÓN DE SITIOS</div>', unsafe_allow_html=True)
+        st.subheader("Comparación ambiental entre sitios")
+        nombres_columnas = {
+            "Site": "Sitio",
+            "Latitude (°)": "Latitud (°)",
+            "Longitude (°)": "Longitud (°)",
+            "Sun geometrically visible (h)": "Sol visible geométricamente (h)",
+            "Sun visible (%)": "Sol visible (%)",
+            "Earth geometrically visible (h)": "Tierra visible geométricamente (h)",
+            f"Earth ≥ {earth_margin:g}° (h)": f"Tierra ≥ {earth_margin:g}° (h)",
+            f"Earth ≥ {earth_margin:g}° (%)": f"Tierra ≥ {earth_margin:g}° (%)",
+            "Sun 5–20° (h)": "Sol entre 5° y 20° (h)",
+            "Sun > 70° (h)": "Sol > 70° (h)",
+            "Longest solar darkness (h)": "Mayor periodo continuo sin Sol (h)",
+            "Longest solar darkness interval (UT)": "Intervalo continuo más largo sin Sol (UT)",
+            "Longest Earth below margin (h)": "Mayor periodo continuo bajo el margen terrestre (h)",
+            "Longest Earth gap interval (UT)": "Intervalo continuo más largo bajo el margen terrestre (UT)",
+            "Exploratory screening": "Evaluación exploratoria",
+            "Note": "Nota",
+        }
+        resumen_es = summary.rename(columns=nombres_columnas)
         st.dataframe(
-            summary,
+            resumen_es,
             width="stretch",
             hide_index=True,
             column_config={
-                "Latitude (°)": st.column_config.NumberColumn(format="%.5f°"),
-                "Longitude (°)": st.column_config.NumberColumn(format="%.5f°"),
-                "Sun visible (%)": st.column_config.NumberColumn(format="%.1f%%"),
-                "Sun geometrically visible (h)": st.column_config.NumberColumn(format="%.2f h"),
-                "Earth geometrically visible (h)": st.column_config.NumberColumn(format="%.2f h"),
+                "Latitud (°)": st.column_config.NumberColumn(format="%.5f°"),
+                "Longitud (°)": st.column_config.NumberColumn(format="%.5f°"),
+                "Sol visible (%)": st.column_config.NumberColumn(format="%.1f%%"),
+                "Sol visible geométricamente (h)": st.column_config.NumberColumn(format="%.2f h"),
+                "Tierra visible geométricamente (h)": st.column_config.NumberColumn(format="%.2f h"),
             },
         )
-        st.caption("Geometric visibility means apparent elevation > 0°. The Earth elevation margin is an exploratory angular filter; it does not model RF links or terrain obstruction.")
+        st.caption("La visibilidad geométrica corresponde a una elevación aparente > 0°. El margen de elevación terrestre es un filtro angular exploratorio; no modela enlaces de radiofrecuencia ni obstrucciones del terreno.")
     with right:
-        st.markdown('<div class="section-kicker">CROSS-SITE SIGNAL</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-kicker">COMPARACIÓN ENTRE SITIOS</div>', unsafe_allow_html=True)
         st.plotly_chart(crear_grafica_comparacion(summary), width="stretch", config={"displaylogo": False})
         st.download_button(
-            "Download comparison CSV",
-            data=summary.to_csv(index=False).encode("utf-8-sig"),
-            file_name="lunascout_site_comparison.csv",
+            "Descargar comparación en CSV",
+            data=resumen_es.to_csv(index=False).encode("utf-8-sig"),
+            file_name="eclipse_comparacion_sitios.csv",
             mime="text/csv",
             width="stretch",
         )
 
-    with st.expander("Methodology and interpretation", expanded=False):
+    with st.expander("Metodología e interpretación", expanded=False):
         st.markdown(
-            "- **Sun above horizon:** apparent solar elevation > 0° at the sampled time.\n"
-            "- **Earth geometrically visible:** apparent Earth elevation > 0°. This does not guarantee a radio link.\n"
-            f"- **Earth elevation margin:** apparent Earth elevation ≥ {earth_margin}°. The value is configurable and exploratory.\n"
-            "- **Solar 5°–20°:** retained as a reference band from the previous prototype, not as a universal landing requirement.\n"
-            "- **Apollo reference coordinates:** means of Moon Trek waypoints; not necessarily official landing touchdown coordinates."
+            "- **Sol sobre el horizonte:** elevación solar aparente > 0° en el instante muestreado.\n"
+            "- **Tierra geométricamente visible:** elevación aparente de la Tierra > 0°. Esto no garantiza un enlace de radio.\n"
+            f"- **Margen de elevación terrestre:** elevación aparente de la Tierra ≥ {earth_margin}°. El valor es configurable y exploratorio.\n"
+            "- **Sol entre 5° y 20°:** se conserva como banda de referencia del prototipo anterior; no es un requisito universal de aterrizaje.\n"
+            "- **Coordenadas de referencia Apollo:** promedios de puntos de recorrido de Moon Trek; no necesariamente corresponden a coordenadas oficiales de contacto."
         )
 
 with tab_map:
-    st.markdown('<div class="section-kicker">LUNAR GEOSPATIAL CONTEXT</div>', unsafe_allow_html=True)
-    st.subheader("Lunar navigation display")
-    st.caption("Global LRO WAC basemap with available mission-specific layers and waypoints. Tile availability depends on NASA Moon Trek services.")
+    st.markdown('<div class="section-kicker">CONTEXTO GEOESPACIAL LUNAR</div>', unsafe_allow_html=True)
+    st.subheader("Mapa de la superficie lunar")
+    st.caption("Mapa global LRO WAC con capas y puntos de recorrido de misiones disponibles. La disponibilidad de mosaicos depende de los servicios de NASA Moon Trek.")
     lunar_map = construir_mapa_lunar(results, waypoint_bank, zoom=7)
-    map_state = st_folium(lunar_map, height=600, use_container_width=True, key="lunascout_comparison_map")
+    map_state = st_folium(lunar_map, height=600, use_container_width=True, key="eclipse_comparison_map")
     if map_state and map_state.get("last_clicked"):
         clicked = map_state["last_clicked"]
-        st.info(f"Map cursor: latitude {clicked['lat']:.5f}° · longitude {clicked['lng']:.5f}°. Copy these coordinates into a custom-site run in the sidebar.")
+        st.info(f"Coordenadas seleccionadas en el mapa: latitud {clicked['lat']:.5f}° · longitud {clicked['lng']:.5f}°. Copia estas coordenadas en el apartado de sitio personalizado de la barra lateral.")
 
 with tab_timeline:
-    st.markdown('<div class="section-kicker">TEMPORAL GEOMETRY / UTC</div>', unsafe_allow_html=True)
-    st.subheader("Sun / Earth temporal telemetry")
-    st.caption("Solid traces show the Sun; dashed traces show the Earth. Hover to inspect azimuth and elevation at each Horizons timestamp.")
+    st.markdown('<div class="section-kicker">GEOMETRÍA TEMPORAL / UTC</div>', unsafe_allow_html=True)
+    st.subheader("Evolución temporal del Sol y la Tierra")
+    st.caption("Las líneas continuas representan al Sol y las discontinuas a la Tierra. Coloca el cursor sobre la gráfica para consultar el azimut y la elevación en cada instante calculado por Horizons.")
     timeline = crear_timeline_plotly(
         frames_by_site,
         show_sun_band=True,
@@ -595,44 +615,49 @@ with tab_timeline:
     )
     st.plotly_chart(timeline, width="stretch", config={"displaylogo": False, "scrollZoom": True})
     _render_site_inspector(frames_by_site)
-    with st.expander("Download time series", expanded=False):
-        available_site = st.selectbox("Select time series", list(frames_by_site), key="download_timeseries_site")
-        csv_bytes = frames_by_site[available_site].to_csv(index=False).encode("utf-8-sig")
+    with st.expander("Exportar series temporales", expanded=False):
+        available_site = st.selectbox("Selecciona el sitio", list(frames_by_site), key="download_timeseries_site")
+        serie_es = frames_by_site[available_site].rename(columns={
+            "datetime": "Fecha y hora (UT)",
+            "sun_azimuth_deg": "Azimut del Sol (°)",
+            "sun_elevation_deg": "Elevación del Sol (°)",
+            "earth_azimuth_deg": "Azimut de la Tierra (°)",
+            "earth_elevation_deg": "Elevación de la Tierra (°)",
+            "sun_visible_geometric": "Sol visible geométricamente",
+            "earth_visible_geometric": "Tierra visible geométricamente",
+            "earth_above_10deg": "Tierra por encima de 10°",
+            "duration_h": "Duración de muestra (h)",
+        })
+        csv_bytes = serie_es.to_csv(index=False).encode("utf-8-sig")
         st.download_button(
-            "Download selected site's ephemeris CSV",
+            "Descargar efemérides del sitio en CSV",
             data=csv_bytes,
-            file_name=f"lunascout_{available_site.lower().replace(' ', '_')}_ephemeris.csv",
+            file_name=f"eclipse_{available_site.lower().replace(' ', '_')}_efemerides.csv",
             mime="text/csv",
         )
 
 with tab_terrain:
-    st.markdown('<div class="section-kicker">DIGITAL ELEVATION MODEL / LOCAL SCREENING</div>', unsafe_allow_html=True)
-    st.subheader("Terrain systems / candidate scouting")
-    st.caption("Upload a LOLA/LROC DEM or specify a DEM file already committed to the repository. Local processing uses a window around the selected site rather than loading the complete global raster.")
+    st.markdown('<div class="section-kicker">MODELO DIGITAL DE ELEVACIÓN / ANÁLISIS LOCAL</div>', unsafe_allow_html=True)
+    st.subheader("Análisis del terreno y búsqueda de candidatos")
+    st.caption("Se utiliza el DEM LOLA configurado en la carpeta data/. El procesamiento lee una ventana alrededor del sitio seleccionado, en lugar de cargar todo el ráster global.")
     site_names = list(frames_by_site)
-    selected_terrain_site = st.selectbox("Reference location", site_names, key="terrain_site_select")
+    selected_terrain_site = st.selectbox("Ubicación de referencia", site_names, key="terrain_site_select")
     terrain_site = next(item for item in results if item["sitio"] == selected_terrain_site)
-    dem_source_available = bool(dem_upload is not None or (dem_local_path and Path(dem_local_path).exists()))
+    dem_source_available = dem_local_path.is_file()
     if not dem_source_available:
-        st.info("No DEM source detected. Upload a GeoTIFF in the sidebar or set a valid repository path.")
+        st.info("No se detectó el DEM configurado. Coloca el GeoTIFF indicado dentro de la carpeta data/.")
     else:
         terrain_col1, terrain_col2 = st.columns([1, 1])
         with terrain_col1:
-            radius_px = st.slider("Local DEM window radius (pixels)", 30, 250, int(dem_config.get("default_window_radius_px", 100)), 10)
+            radius_px = st.slider("Radio de análisis local del DEM (píxeles)", 30, 250, int(dem_config.get("default_window_radius_px", 100)), 10)
         with terrain_col2:
-            st.markdown("<div class='panel'><b>Screening note</b><p class='soft-note'>Slope and local roughness are topographic indicators only. This prototype does not certify a landing ellipse or evaluate all vehicle-specific hazards.</p></div>", unsafe_allow_html=True)
+            st.markdown("<div class='panel'><b>Nota de evaluación</b><p class='soft-note'>La pendiente y la rugosidad local son indicadores topográficos preliminares. Este prototipo no certifica una elipse de aterrizaje ni evalúa todos los riesgos específicos del vehículo.</p></div>", unsafe_allow_html=True)
 
-        if st.button("ANALYZE SELECTED TERRAIN", type="primary", width="content"):
-            temp_path = None
+        if st.button("ANALIZAR TERRENO SELECCIONADO", type="primary", width="content"):
             try:
-                if dem_upload is not None:
-                    temp_path = _write_upload_to_temp(dem_upload)
-                    source_path = temp_path
-                else:
-                    source_path = dem_local_path
-                with st.spinner("Reading local DEM window and calculating terrain derivatives…"):
+                with st.spinner("Leyendo la ventana local del DEM y calculando las variables del terreno…"):
                     terrain_output = leer_dem_local(
-                        source_path,
+                        dem_local_path,
                         terrain_site["lat"],
                         terrain_site["lon"],
                         radius_px=radius_px,
@@ -641,39 +666,30 @@ with tab_terrain:
                 st.session_state["terrain_output"] = terrain_output
                 st.session_state["terrain_site_name"] = selected_terrain_site
             except Exception as exc:
-                st.error(f"DEM analysis failed: {exc}")
-            finally:
-                if temp_path and Path(temp_path).exists():
-                    Path(temp_path).unlink(missing_ok=True)
+                st.error(f"Falló el análisis del DEM: {exc}")
 
         terrain_output = st.session_state.get("terrain_output")
         if terrain_output and st.session_state.get("terrain_site_name") == selected_terrain_site:
             tm = st.columns(3)
-            tm[0].metric("Elevation at point", "n/a" if not np.isfinite(terrain_output["point_elevation"]) else f"{terrain_output['point_elevation']:.2f} m")
-            tm[1].metric("Local slope", "n/a" if not np.isfinite(terrain_output["point_slope_deg"]) else f"{terrain_output['point_slope_deg']:.2f}°")
-            tm[2].metric("Mean local slope", f"{terrain_output['mean_slope_deg']:.2f}°")
-            st.plotly_chart(crear_superficie_3d(terrain_output["elevation"], f"Local terrain · {selected_terrain_site}"), width="stretch")
-            st.caption(f"DEM CRS: {terrain_output['crs']} · Approx. pixel size: {terrain_output['resolution_x_m']:.2f} m × {terrain_output['resolution_y_m']:.2f} m · Vertical scale factor: {dem_config.get('elevation_to_m_factor', 1.0)} (verify against source DEM metadata).")
+            tm[0].metric("Elevación en el punto", "N/D" if not np.isfinite(terrain_output["point_elevation"]) else f"{terrain_output['point_elevation']:.2f} m")
+            tm[1].metric("Pendiente local", "N/D" if not np.isfinite(terrain_output["point_slope_deg"]) else f"{terrain_output['point_slope_deg']:.2f}°")
+            tm[2].metric("Pendiente local media", f"{terrain_output['mean_slope_deg']:.2f}°")
+            st.plotly_chart(crear_superficie_3d(terrain_output["elevation"], f"Terreno local · {selected_terrain_site}"), width="stretch")
+            st.caption(f"Sistema de referencia del DEM: {terrain_output['crs']} · Tamaño aproximado del píxel: {terrain_output['resolution_x_m']:.2f} m × {terrain_output['resolution_y_m']:.2f} m · Factor de escala vertical: {dem_config.get('elevation_to_m_factor', 1.0)} (verifica los metadatos del producto).")
 
             st.markdown("---")
-            st.markdown('<div class="section-kicker">AUTOMATIC LANDING ZONE DETECTION / TOPOGRAPHIC SCREEN</div>', unsafe_allow_html=True)
-            st.write("Search for connected candidate patches around the selected reference coordinate using slope and local roughness constraints.")
-            st.caption("For Haworth, Nobile or Malapert, use a verified regional reference coordinate as a Custom site in the sidebar. The bundled Artemis list contains names only, not authoritative region-center coordinates.")
+            st.markdown('<div class="section-kicker">DETECCIÓN AUTOMÁTICA DE ZONAS DE ATERRIZAJE / FILTRO TOPOGRÁFICO</div>', unsafe_allow_html=True)
+            st.write("Busca parches contiguos candidatos alrededor de la coordenada de referencia, utilizando restricciones de pendiente y rugosidad local.")
+            st.caption("Para Haworth, Nobile o Malapert, utiliza una coordenada regional verificada como sitio personalizado. El catálogo de Artemis incluido contiene nombres, no coordenadas oficiales del centro de cada región.")
             c1, c2, c3 = st.columns(3)
-            max_slope = c1.slider("Maximum slope (°)", 1.0, 15.0, float(dem_config["candidate_search"]["max_slope_deg"]), 0.5)
-            max_rough = c2.slider("Maximum roughness (m)", 0.5, 10.0, float(dem_config["candidate_search"]["max_roughness_m"]), 0.5)
-            max_count = c3.slider("Maximum candidates", 3, 30, 12)
-            if st.button("SEARCH TOPOGRAPHIC CANDIDATES", width="stretch"):
-                candidate_temp = None
+            max_slope = c1.slider("Pendiente máxima (°)", 1.0, 15.0, float(dem_config["candidate_search"]["max_slope_deg"]), 0.5)
+            max_rough = c2.slider("Rugosidad máxima (m)", 0.5, 10.0, float(dem_config["candidate_search"]["max_roughness_m"]), 0.5)
+            max_count = c3.slider("Máximo de candidatos", 3, 30, 12)
+            if st.button("BUSCAR CANDIDATOS TOPOGRÁFICOS", width="stretch"):
                 try:
-                    if dem_upload is not None:
-                        candidate_temp = _write_upload_to_temp(dem_upload)
-                        source_path = candidate_temp
-                    else:
-                        source_path = dem_local_path
-                    with st.spinner("Screening DEM patches…"):
+                    with st.spinner("Evaluando parches del DEM…"):
                         candidates = buscar_candidatos_topograficos(
-                            source_path,
+                            dem_local_path,
                             terrain_site["lat"],
                             terrain_site["lon"],
                             search_radius_px=max(60, radius_px),
@@ -685,7 +701,7 @@ with tab_terrain:
                             elevation_to_m_factor=float(dem_config.get("elevation_to_m_factor", 1.0)),
                         )
                     if candidates.empty:
-                        st.warning("No patches met the selected filters. Increase the search radius or review the thresholds.")
+                        st.warning("Ningún parche cumplió los filtros seleccionados. Aumenta el radio de búsqueda o revisa los umbrales.")
                         st.session_state.pop("candidate_output", None)
                     else:
                         candidates = filtrar_frontera_pareto(
@@ -696,36 +712,39 @@ with tab_terrain:
                         st.session_state["candidate_output"] = candidates
                         st.session_state["candidate_site_name"] = selected_terrain_site
                 except Exception as exc:
-                    st.error(f"Candidate search failed: {exc}")
-                finally:
-                    if candidate_temp and Path(candidate_temp).exists():
-                        Path(candidate_temp).unlink(missing_ok=True)
+                    st.error(f"Falló la búsqueda de candidatos: {exc}")
 
             candidate_output = st.session_state.get("candidate_output")
             if candidate_output is not None and st.session_state.get("candidate_site_name") == selected_terrain_site:
-                st.markdown("#### Topographic candidate patches")
-                st.dataframe(candidate_output, width="stretch", hide_index=True)
+                st.markdown("#### Parches candidatos por topografía")
+                candidatos_es = candidate_output.rename(columns={
+                    "candidate_id": "Candidato", "lat": "Latitud (°)", "lon": "Longitud (°)",
+                    "slope_deg": "Pendiente (°)", "roughness_m": "Rugosidad (m)",
+                    "component_pixels": "Píxeles del parche", "area_km2_approx": "Área aproximada (km²)",
+                    "Pareto": "Frontera de Pareto",
+                })
+                st.dataframe(candidatos_es, width="stretch", hide_index=True)
                 pareto_count = int(candidate_output["Pareto"].sum())
-                st.info(f"{pareto_count} candidate(s) are non-dominated across slope, roughness and approximate patch area. This is a topography-only shortlist, not a landing-site safety result.")
-                st.caption("The chart minimizes slope and roughness; marker size represents approximate patch area. Cyan points are non-dominated when all three terrain objectives are considered.")
+                st.info(f"{pareto_count} candidato(s) no están dominados en pendiente, rugosidad y área aproximada del parche. Esta preselección considera únicamente la topografía y no representa una evaluación de seguridad de aterrizaje.")
+                st.caption("La gráfica minimiza la pendiente y la rugosidad; el tamaño del marcador representa el área aproximada del parche. Los puntos cian son no dominados al considerar los tres objetivos topográficos.")
                 st.plotly_chart(
                     crear_grafica_pareto_topografica(candidate_output),
                     width="stretch",
                     config={"displaylogo": False},
                 )
-                st.markdown("#### Candidate coordinates on the lunar map")
+                st.markdown("#### Coordenadas candidatas en el mapa lunar")
                 candidate_map_records = [{
-                    "sitio": f"Reference · {selected_terrain_site}",
+                    "sitio": f"Referencia · {selected_terrain_site}",
                     "lat": float(terrain_site["lat"]),
                     "lon": float(terrain_site["lon"]),
-                    "source": "Selected reference coordinate",
+                    "source": "Coordenada de referencia seleccionada",
                 }]
                 for _, candidate_row in candidate_output.iterrows():
                     candidate_map_records.append({
-                        "sitio": f"Candidate {int(candidate_row['candidate_id'])}",
+                        "sitio": f"Candidato {int(candidate_row['candidate_id'])}",
                         "lat": float(candidate_row["lat"]),
                         "lon": float(candidate_row["lon"]),
-                        "source": "DEM topographic screening",
+                        "source": "Preselección topográfica del DEM",
                     })
                 candidate_lunar_map = construir_mapa_lunar(candidate_map_records, {}, zoom=11)
                 st_folium(
@@ -735,14 +754,14 @@ with tab_terrain:
                     key=f"candidate_map_{selected_terrain_site}",
                 )
                 st.download_button(
-                    "Download candidate coordinates CSV",
-                    data=candidate_output.to_csv(index=False).encode("utf-8-sig"),
-                    file_name="lunascout_topographic_candidates.csv",
+                    "Descargar coordenadas candidatas en CSV",
+                    data=candidatos_es.to_csv(index=False).encode("utf-8-sig"),
+                    file_name="eclipse_candidatos_topograficos.csv",
                     mime="text/csv",
                 )
 
 st.divider()
 st.markdown(
-    "<div class='soft-note'>LUNASCOUT is an exploratory analysis prototype. Geometric visibility is not a verified RF link; a flat/smooth DEM screen is not a certified landing assessment; and waypoint averages are not official touchdown coordinates. Confirm source provenance, coordinate reference systems, DEM vertical units and mission-specific requirements before engineering use.</div>",
+    "<div class='soft-note'>ECLIPSE es un prototipo de análisis exploratorio. La visibilidad geométrica no equivale a un enlace de radio verificado; el filtro de pendiente y rugosidad no certifica un sitio de aterrizaje; y los promedios de puntos de recorrido no son coordenadas oficiales de contacto. Verifica la procedencia de los datos, los sistemas de referencia, las unidades verticales del DEM y los requisitos de cada misión antes de utilizar los resultados con fines de ingeniería.</div>",
     unsafe_allow_html=True,
 )

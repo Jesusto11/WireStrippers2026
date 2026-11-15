@@ -1,5 +1,5 @@
 {
-  "default_path": "",
+  "default_path": "data/LRO_LOLA_DEM_Global_128ppd_v04.tif",
   "lunar_radius_m": 1737400.0,
   "elevation_units": "m",
   "elevation_to_m_factor": 1.0,
@@ -11,7 +11,8 @@
     "minimum_spacing_m": 300.0
   },
   "notes": [
-    "Check the DEM metadata, coordinate reference system, elevation units and pixel resolution before interpreting slope or roughness.",
-    "A slope threshold is a user-defined screening criterion, not an HLS/NASA certified landing constraint."
+    "El DEM se detecta automáticamente en data/LRO_LOLA_DEM_Global_128ppd_v04.tif.",
+    "Verifica CRS, resolución, datum y unidades verticales del producto LOLA antes de interpretar pendiente o rugosidad.",
+    "Los umbrales de pendiente y rugosidad son criterios exploratorios configurables; no son restricciones certificadas por NASA/HLS."
   ]
 }

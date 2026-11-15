@@ -65,7 +65,7 @@ def generar_dispersion_lunar(
     metros; deben sustituirse por un modelo de dispersión del vehículo real.
     """
     if n_samples < 1:
-        raise ValueError("n_samples debe ser mayor que cero.")
+        raise ValueError("El número de muestras debe ser mayor que cero.")
     if sigma_east_m < 0 or sigma_north_m < 0:
         raise ValueError("Las desviaciones estándar no pueden ser negativas.")
     rng = np.random.default_rng(seed)
@@ -92,7 +92,7 @@ def estimar_probabilidad_factibilidad(
     """
     feasible = np.asarray(evaluator(latitudes, longitudes), dtype=bool)
     if feasible.shape != np.asarray(latitudes).shape:
-        raise ValueError("evaluator debe devolver una máscara con la misma longitud de las muestras.")
+        raise ValueError("La función evaluadora debe devolver una máscara del mismo tamaño que las muestras.")
     total = int(feasible.size)
     count = int(feasible.sum())
     return {
@@ -122,12 +122,12 @@ def ejecutar_nsga2(
         from pymoo.core.problem import Problem
         from pymoo.optimize import minimize
     except ImportError as exc:
-        raise ImportError("NSGA-II requiere pymoo. Instala con: pip install pymoo") from exc
+        raise ImportError("NSGA-II requiere la biblioteca pymoo. Instálala con: pip install pymoo") from exc
 
     lower = np.asarray(lower_bounds, dtype=float)
     upper = np.asarray(upper_bounds, dtype=float)
     if lower.ndim != 1 or upper.shape != lower.shape or np.any(upper <= lower):
-        raise ValueError("Los límites deben ser vectores 1D del mismo tamaño y upper > lower.")
+        raise ValueError("Los límites deben ser vectores unidimensionales del mismo tamaño y cada límite superior debe ser mayor que el inferior.")
     probe = np.asarray(objective_function((lower + upper) / 2), dtype=float).reshape(-1)
     if probe.size < 2:
         raise ValueError("NSGA-II requiere al menos dos funciones objetivo.")

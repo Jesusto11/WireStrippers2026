@@ -9,3 +9,5 @@ venv/
 *.tiff
 *.vrt
 *.aux.xml
+# Permitir específicamente el DEM configurado para que Git LFS pueda rastrearlo.
+!data/LRO_LOLA_DEM_Global_128ppd_v04.tif
